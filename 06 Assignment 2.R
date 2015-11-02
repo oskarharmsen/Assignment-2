@@ -100,7 +100,7 @@ library("plyr")
 #Fill list with data 
     df <- list() #Create empty list
     
-    for (i in 544:length(bribe.links)){ #Fill list
+    for (i in 556:length(bribe.links)){ #Fill list
       df[[i]] <- get.bribe(bribe.links[i])
       print( paste( "Downloaded", i, "out of", length(bribe.links), "observations."))
     }
@@ -113,24 +113,33 @@ library("plyr")
     #Rename
     names(df1) <- c("title", "amount", "department", "topic", "views", "city",  "date")
     
-    #Convert Class
+    #Convert Classes
     df1$date <- as.Date(df1$date)
     df1$amount <- gsub( x = df1$amount, pattern = "INR ", replacement = "")
-    # df1$amount <- as.numeric(df1$amount)
+    df1$amount <- gsub(x = df1$amount, pattern = "?\\,[0-9]+\\,", replacement = NA)
+    df1$amount <- gsub(x = df1$amount, pattern = "\\,", replacement = "")
+    df1$amount <- as.numeric(df1$amount)
+    
+    #Remove NAs
+    df1 <- df1 %>% filter(!is.na(amount))
     
     
-    #Gem downloadet data    
-        setwd("/Users/oskarh/Documents/Assignment 2/Assignment-2")
-        write.table(x = df1, file = "Bribes.csv", 
-                    fileEncoding = "UTF-8", sep = ";", row.names = FALSE, dec = ",")
-    
+#     #Gem downloadet data    
+#         setwd("/Users/oskarh/Documents/Assignment 2/Assignment-2")
+#         write.table(x = df1, file = "Bribes.csv", 
+#                     fileEncoding = "UTF-8", sep = ";", row.names = FALSE, dec = ",")
+#     
     
     
     
     
 ######## DATA EXPLORATION ###########
     
-    
+    #Group by topic
+    df2 <- df1 %>%
+           group_by(topic) %>% 
+           summarise(count = n(), mean = mean(amount)) %>% 
+           arrange(desc(mean))
     
     
     
