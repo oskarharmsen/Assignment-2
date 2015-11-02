@@ -41,6 +41,11 @@ library("plyr")
     }
     
     bribe.links <- bribe.links[2:length(bribe.links)] #Remove the first '0'
+
+    #Gem downloadet data    
+      #     setwd("/Users/oskarh/Documents/Assignment 2/Assignment-2")
+      #     write.table(x = bribe.links, file = "Links to bribe observations.csv", 
+      #                 fileEncoding = "UTF-8", sep = ";", row.names = FALSE, dec = ",")
   
   
 ###### Step 2: Scrape data from each bribe observation
@@ -111,6 +116,4 @@ library("plyr")
     
     #Convert Class
     df$date <- as.Date(df$date)
-    
-    ##Jeg tilføjer lige en linje!
     
