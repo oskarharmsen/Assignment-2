@@ -136,10 +136,8 @@ library("plyr")
 ######## DATA EXPLORATION ###########
     
     #Group by topic
-    df2 <- df1 %>%
            group_by(topic) %>% 
            summarise(count = n(), mean = mean(amount)) %>% 
-           arrange(desc(mean))
     
     
     
