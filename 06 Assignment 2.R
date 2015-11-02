@@ -80,7 +80,6 @@ library("plyr")
               html_text() %>% 
               gsub(pattern = " views", x = ., replacement = "") %>% 
               as.numeric()
-              
     
     city <- temp.data %>% 
               html_nodes(css = ".location") %>% 
@@ -109,11 +108,17 @@ library("plyr")
 ##### Step 3: Clean data
     
     #Convert to dataframe format
-    df <- ldply(df)
+    df1 <- ldply(df)
     
     #Rename
-    names(df) <- c("title", "amount", "department", "topic", "city", "views",  "date")
+    names(df1) <- c("title", "amount", "department", "topic", "city", "views",  "date")
     
     #Convert Class
-    df$date <- as.Date(df$date)
+    df1$date <- as.Date(df1$date)
+    
+#     #Gem downloadet data    
+#         setwd("/Users/oskarh/Documents/Assignment 2/Assignment-2")
+#         write.table(x = df1, file = "Bribes.csv", 
+#                     fileEncoding = "UTF-8", sep = ";", row.names = FALSE, dec = ",")
+    
     
