@@ -100,7 +100,7 @@ library("plyr")
 #Fill list with data 
     df <- list() #Create empty list
     
-    for (i in 556:length(bribe.links)){ #Fill list
+    for (i in 1:length(bribe.links)){ #Fill list
       df[[i]] <- get.bribe(bribe.links[i])
       print( paste( "Downloaded", i, "out of", length(bribe.links), "observations."))
     }
@@ -113,6 +113,13 @@ library("plyr")
     #Rename
     names(df1) <- c("title", "amount", "department", "topic", "views", "city",  "date")
     
+    #Gem downloadet data    
+    setwd("/Users/oskarh/Documents/Assignment 2/Assignment-2")
+    write.table(x = df1, file = "Bribes.csv", 
+                fileEncoding = "UTF-8", sep = ";", row.names = FALSE, dec = ",")
+    
+    
+    
     #Convert Classes
     df1$date <- as.Date(df1$date)
     df1$amount <- gsub( x = df1$amount, pattern = "INR ", replacement = "")
@@ -124,6 +131,7 @@ library("plyr")
     df1 <- df1 %>% filter(!is.na(amount))
     
     
+<<<<<<< Updated upstream
 #     #Gem downloadet data    
 #         setwd("/Users/oskarh/Documents/Assignment 2/Assignment-2")
 #         write.table(x = df1, file = "Bribes.csv", 
@@ -132,15 +140,46 @@ library("plyr")
     # split "city" into "town and "district: 
     Bribes <- Bribes %>%
       separate(city,c("town","district"),",")
+=======
+    
+>>>>>>> Stashed changes
     
     
     
 ######## DATA EXPLORATION ###########
     
+    #Read Dataset
+    dir <- "/Users/oskarh/Documents/Assignment 2/Assignment-2"
+    setwd(dir)
+    df <- read.csv("Bribes.csv", header = TRUE, sep = ";")
+    
+    
     #Group by topic
+    topic.table <- df1 %>%
            group_by(topic) %>% 
            summarise(count = n(), mean = mean(amount)) %>% 
+           arrange(desc(count))
     
+    #Group by department
+    department.table <- df1 %>%
+           group_by(department) %>% 
+           summarise(count = n(), mean = mean(amount)) %>% 
+           arrange(desc(count))
     
+  
     
-    
+# # # Idéer:
+#     
+#     Tilføj andre dataset:
+#       befolkningsstørrelse per province
+#       literacy per province
+#       evt. computer penetration
+#       evt. gennemsnitsindkomst
+#       
+#     Check:
+#       Corruption per province (and its correlation with, e.g. income or literacy)
+#       
+#       
+#       
+#       
+#       
