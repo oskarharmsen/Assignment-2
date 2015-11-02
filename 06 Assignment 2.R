@@ -112,3 +112,5 @@ library("plyr")
     #Convert Class
     df$date <- as.Date(df$date)
     
+    ##Jeg tilføjer lige en linje!
+    
