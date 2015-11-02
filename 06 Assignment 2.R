@@ -128,8 +128,10 @@ library("plyr")
 #         setwd("/Users/oskarh/Documents/Assignment 2/Assignment-2")
 #         write.table(x = df1, file = "Bribes.csv", 
 #                     fileEncoding = "UTF-8", sep = ";", row.names = FALSE, dec = ",")
-#     
-    
+#    
+    # split "city" into "town and "district: 
+    Bribes <- Bribes %>%
+      separate(city,c("town","district"),",")
     
     
     
