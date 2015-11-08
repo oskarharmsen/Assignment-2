@@ -1,0 +1,16 @@
+---
+title: "Gr8Assign2"
+author: 'Group 8: Oskar Harmsen, Dennis Hansen, Ann-Sofie Hansen & Susanne Sundgaard
+  Hansen'
+date: "8. november 2015"
+output: html_document
+---
+In this assignment we are going to scrape the 1000 most recent posts from the website www.ipaidabribe.com - a website designed to crowdsource the level op corruption in India. We start by loading the different packages that we need: 
+
+```{r}
+library("readr")
+library("dplyr")
+library("tidyr")
+library("ggplot2")
+library("rvest")
+```
