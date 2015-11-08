@@ -13,6 +13,7 @@ setwd("/Users/oskarh/Documents/Assignment 2/Assignment-2/")
 
 ### Load data
   df <- read.csv("Assign2.csv", header = TRUE, sep = ";")
+  
   names(df) <- c("date", "type", "town", "state", "views", "department", "currency", "paid", "title")
   
   #Correct classes of columns
@@ -55,7 +56,7 @@ setwd("/Users/oskarh/Documents/Assignment 2/Assignment-2/")
   
   
   
-# Download wikipedia table, mergable with own dataset
+# Download wikipedia table, mergeable with own dataset
   
   url <- "https://en.wikipedia.org/wiki/States_and_union_territories_of_India"
   tabs <- GET(url, encoding = "UTF-8")
@@ -72,7 +73,6 @@ setwd("/Users/oskarh/Documents/Assignment 2/Assignment-2/")
   tabs <- as.data.frame(lapply(tabs, function(y) gsub(pattern = "\\[.*\\]", replacement =  "", x = y)))
   tabs <- as.data.frame(lapply(tabs, function(y) gsub(pattern = "\\%", replacement =  "", x = y)))
   tabs <- as.data.frame(lapply(tabs, function(y) gsub(pattern = "N\\/A", replacement =  NA, x = y)))
-  # tabs$state <- gsub(x = tabs$state, pattern = "Delhi", ) #Match data from Punjab( wiki ) into Delhi (df)
   tabs$state <- gsub(x = tabs$state, pattern = "Odisha", replacement = "Orissa")
   tabs$literacy <- as.numeric(as.character(tabs$literacy))
   tabs$population_density <- as.numeric(as.character(tabs$population_density))

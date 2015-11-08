@@ -321,7 +321,6 @@ p
             
       top.table <- top.table[-7,]
       top.table$state <- as.factor(top.table$state)
-      top.test <- top.table %>% filter(state == "Assam")
       
       
       # FACET WRAP
