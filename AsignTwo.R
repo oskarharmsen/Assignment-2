@@ -1,3 +1,4 @@
+
 # settings
 
 Sys.setlocale(category = "LC_ALL", locale = "UTF-8")
@@ -5,22 +6,19 @@ Sys.setlocale(category = "LC_ALL", locale = "UTF-8")
 options(scipen=999)
 
 # loading packages: 
-library("plyr")
-library("rvest")
-library("ggplot2")
-library("lubridate")
-library("stringr")
-library("XML")
-library("httr")
+
 library("readr")
+library("dplyr")
 library("tidyr")
+library("ggplot2")
+library("rvest")
 library("rgeos")
 library("maptools")
 library("sp")
+library("ggplot2")
 library("gpclib")
 library("viridis")
 library("ggthemes")
-library("dplyr")
 
 # **************** (1) data scraping *********************** #
 
@@ -115,6 +113,8 @@ df <- read.csv(file = "https://raw.githubusercontent.com/oskarharmsen/Assignment
 
 names(df) <- c("date", "type", "town", "state", "views", "department", "currency", "paid", "title")
 
+
+
 # **************** (3) data analysis *********************** #
 
 #Correct classes of columns
@@ -131,6 +131,8 @@ names(df) <- c("date", "type", "town", "state", "views", "department", "currency
     filter(!is.na(paid)) #Remove observations with NA in paid
   
   df <- df %>% filter(!is.na(state) & state!="") #Remove observations with NA or missing in state
+
+
 
 ### Basic tables
   
@@ -151,6 +153,7 @@ names(df) <- c("date", "type", "town", "state", "views", "department", "currency
     group_by(state) %>% 
     summarise(count = n(), mean = mean(paid)) %>% 
     arrange(desc(count))
+  
   
   # Download wikipedia table, mergeable with own dataset
   
@@ -178,29 +181,51 @@ names(df) <- c("date", "type", "town", "state", "views", "department", "currency
 
   df <- left_join(df, tabs, by = "state")
 
+
 # (i) distrubution plots
+  
+# make an aggregate dataframe for types and # of bribes:  
+    
+ agg <- df %>%
+   group_by(type) %>%
+   summarise( count = n(), mean = mean(paid), median = median(paid)) %>%
+   arrange(-count)
 
-# make an aggregate dataframe for birth certificate:
+ p <- ggplot(agg, aes( x = reorder(type, -count), y = count))
+ p <- p + geom_bar(stat = "identity", fill = "black", alpha = 0.8) + geom_hline(y = mean(agg$count), colour = "red")
+ p <- p + coord_flip() + labs( x = "Type", y = "# of bribes") 
+ p <- p + geom_text(aes(label = round(mean, digits = 0)), size = 3, y = 200, colour = "darkblue")
+ p
 
-agg <- df %>%
+# aggregate dataframe for birth certificate:
+
+agg1 <- df %>%
   filter(paid != "NA", state != " ", type == "Birth Certificate") %>%
   group_by(state) %>%
-  summarise( count = n(), meapaid = mean(paid)) %>%
+  summarise( count = n(), mean = mean(paid)) %>%
   arrange(-count)
 
-# simple barplot showing the distribution of birth certificate reports by district:
+# barplot showing the distribution of birth certificate reports by district:
 
-p <- ggplot(agg, aes( x = reorder(state, -count), y = count))
-p <- p + geom_bar(stat = "identity", fill = "darkred") + coord_flip() 
-p <- p + labs( x = "Name of state", y = "# of reports", title = "Birth Certificate")
+p <- ggplot(agg1, aes( x = reorder(state, -count), y = count))
+p <- p + geom_bar(stat = "identity", fill = "black", alpha = 0.8) + geom_hline(y = mean(agg1$count), colour = "red")
+p <- p + coord_flip() + labs( x = "Type", y = "# of bribes") 
+p <- p + geom_text(aes(label = round(mean, digits = 0)), size = 3, y = 60, colour = "darkblue")
 p
 
-# (ii) mapping 
+# (ii) 
+
+
+
+# (iv) mapping 
 
 #load spatial data and fortify to dataframe#
-download.file("https://raw.githubusercontent.com/oskarharmsen/Assignment-2/master/IND_adm1.rds", "India")
-india <- readRDS("India")
+india <- readRDS("/Users/susannesundgaardhansen/Downloads/IND_adf1.rds")
 india <- fortify(india, region="NAME_1")
+
+df <- df %>% filter(df$paid!="NA" & !is.na(df$type))
+df$paid=as.numeric(df$paid)
+df$state <- substring(df$state, 2, nchar(df$state))
 
 #check if names of states matches in the two datasets#
 namesInData <- levels(factor(df$state))
@@ -208,155 +233,25 @@ namesInMap <- levels(factor(india$id))
 namesInData[which(!namesInData %in% namesInMap)]
 
 #correct errors and spelling#
-df$state <- gsub("Hardoi", "Uttar Pradesh", df$state)
-df$state <- gsub("Uttarakhand", "Uttaranchal", df$state)
+df$state<- gsub("Hadoi", "Uttar Pradesh", df$state)
+df$state<- gsub("Uttarakhand", "Uttaranchal", df$state)
 
-#new dataframes to use for plotting#
-df1 <- df %>% 
-  group_by(state) %>% 
-  summarise(count = n(), aggpaid=sum(paid))
-
-df2 <- df %>%
-  group_by(state)%>%
-  summarise(count=n())
-
-df3 <- df %>%
-  group_by(state)%>%
-  summarise(lit=median(literacy))
-df3$lit[25] <- 69.72
-
-df4 <- df %>%
-  group_by(state)%>%
-  summarise(urban=median(urban_population_share))
-df4$urban[25] <- 20.8
+#new dataframe that summarizes over districts and amounts paid#
+df1 <- ddply(df, c("state"), summarise,
+             paid=sum(paid))
 
 #plotting the spatial data - CAUTION this takes a while! Approx. 10 minutes#
-p1 <- ggplot() + 
-  geom_map(data=df1, aes(map_id = state, fill=aggpaid), 
-           map = india) + 
+p <- ggplot() + geom_map(data=df1, aes(map_id = state, fill=paid),
+                         map = india) + 
   expand_limits(x = india$long, y = india$lat)+ 
-  coord_equal()+
-  ggtitle("Paid: Reported bribes in India")+
-  theme_tufte(ticks = FALSE)+
-  theme(plot.title = element_text(lineheight=.8, face="bold"))+
+  coord_equal()+v
+ggtitle("Reported bribes in India")+
+  theme_tufte()+
   scale_fill_viridis(trans="log10", na.value ="grey50",
                      name="Amount paid \n(logs)")
-
-p2 <- ggplot() + 
-  geom_map(data=df2, aes(map_id = state, fill=count), 
-           map = india) + 
-  expand_limits(x = india$long, y = india$lat)+ 
-  coord_equal()+
-  ggtitle("Count: Reported bribes in India")+
-  theme_tufte(ticks = FALSE)+
-  theme(plot.title = element_text(lineheight=.8, face="bold"))+
-  scale_fill_viridis(na.value ="grey50",
-                     name="Count")
-p3 <- ggplot() + 
-  geom_map(data=df3, aes(map_id = state, fill=lit), 
-           map = india) + 
-  expand_limits(x = india$long, y = india$lat)+ 
-  coord_equal()+
-  ggtitle("Literacy rates in India")+
-  theme_tufte(ticks = FALSE)+
-  theme(plot.title = element_text(lineheight=.8, face="bold"))+
-  scale_fill_viridis(na.value ="grey50",
-                     name="Literacy")
-
-p4 <- ggplot() + 
-  geom_map(data=df4, aes(map_id = state, fill=urban), 
-           map = india) + 
-  expand_limits(x = india$long, y = india$lat)+ 
-  coord_equal()+
-  ggtitle("% of total population that is urban")+
-  theme_tufte(ticks = FALSE)+
-  theme(plot.title = element_text(lineheight=.8, face="bold"))+
-  scale_fill_viridis(na.value ="grey50",
-                     name="Urban pop.")
-
-grid.arrange(p1, p2, p3, p4, ncol=2)
+p
 
 
-        #Create summary dataframe on state level
-        state.table <- df %>%
-          group_by(state) %>% 
-          summarise(
-            count = n(),
-            mean_bribe = mean(paid),
-            median_bribe = median(paid), 
-            urban_population_share = mean(urban_population_share),
-            literacy_percent = mean(literacy),
-            population_density_per_sqkm = mean(population_density)
-            ) %>%   
-          arrange(desc(count))
         
-        #Plot
-        plot.literacy <-  ggplot(data = state.table, aes(x = literacy_percent, y = mean_bribe)) +
-              stat_smooth(method = "lm")+
-              geom_point() + 
-              theme_minimal()+
-              ylab("")
-        
-        plot.urban <-  ggplot(data = state.table, aes(x = urban_population_share, y = mean_bribe)) +
-              stat_smooth(method = "lm")+
-              geom_point() + 
-              theme_minimal()
-        
-        plot.density <-  ggplot(data = state.table, aes(x = population_density_per_sqkm, y = mean_bribe)) +
-              stat_smooth(method = "lm")+
-              geom_point() + 
-              theme_minimal()+
-              ylab("")
-        
-        library(gridExtra)
-        grid.arrange(plot.urban, plot.density, plot.literacy, ncol = 3)
-        
-        #Checking the summary with literacy
-        fit1 <- lm(mean_bribe ~ literacy_percent, data = state.table)
-        summary(fit1)
-        
-        
-        
-    #Tabeller med top for hver af staterne
-        top.table <- df %>% 
-          group_by(state) %>% 
-          mutate(
-            count.state = n()
-          ) %>% 
-          ungroup() %>% 
-          
-          group_by(state, type) %>% 
-          summarise(
-            mean_bribe = mean(paid),
-            count = n(), 
-            count.state = mean(count.state),
-            share = count / count.state
-          ) %>% 
-          
-          top_n( n = 3, wt = share) %>% 
-          ungroup() %>% 
-          arrange(desc(count.state), desc(share)) %>% 
-        
-          filter(count.state > 33)
-            
-      top.table <- top.table[-7,]
-      top.table$state <- as.factor(top.table$state)
-      
-      
-      # FACET WRAP
-           
-      plot <- ggplot( data = top.table)+
-              facet_wrap( ~ state, ncol = 3, scales = "free") +
-              geom_bar(stat = "identity", aes(x = reorder(type, -share), y = share)) +
-              # coord_flip() + 
-              xlab("")+
-              ylab("")+
-              ylim(0, 0.95)+
-              ggtitle("Top 3 bribe types in the top 6 states \n by number of reports, percent")
-      plot
-        
-        
-
-
 
 
