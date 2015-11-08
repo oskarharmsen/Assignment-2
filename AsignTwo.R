@@ -1,3 +1,11 @@
+library("rvest")
+library("ggplot2")
+library("lubridate")
+library("plyr")
+library("dplyr")
+library("stringr")
+library("XML")
+library("httr")
 
 # settings
 
@@ -233,7 +241,103 @@ ggtitle("Reported bribes in India")+
                      name="Amount paid \n(logs)")
 p
 
+# Hente, scrape, cleane dataset
+# 
+# Deskriptiv stat
+#   - (DONE) Typer af bribes, counts af reports og måske average: barplot med punkter for average.
+#   - (DONE) Counts og stat (evt. på et kort) : "Hvor er siden mest aktiv?"
+#   - (DONE) Top types of bribery across the most active states - "Are there any differences?"
+#   - Fordeling af bribery size for Birth Certificates - "High variance in bribes paid": plot histogram"
+# 
+# 
+# 
+# Parring med demografisk data
+#   - download af tabel fra wikipedia + merging
+# 
+#   - "Can we explain differences in average bribery costs between states?" 
+#   - (DONE) Cross-plot (y = mean (or median) of paid bribes, and x = {urban_population_share, literacy rate, population_density})
 
+        #Create summary dataframe on state level
+        state.table <- df %>%
+          group_by(state) %>% 
+          summarise(
+            count = n(),
+            mean_bribe = mean(paid),
+            median_bribe = median(paid), 
+            urban_population_share = mean(urban_population_share),
+            literacy_percent = mean(literacy),
+            population_density_per_sqkm = mean(population_density)
+            ) %>%   
+          arrange(desc(count))
         
+        #Plot
+        plot.literacy <-  ggplot(data = state.table, aes(x = literacy_percent, y = mean_bribe)) +
+              stat_smooth(method = "lm")+
+              geom_point() + 
+              theme_minimal()+
+              ylab("")
+        
+        plot.urban <-  ggplot(data = state.table, aes(x = urban_population_share, y = mean_bribe)) +
+              stat_smooth(method = "lm")+
+              geom_point() + 
+              theme_minimal()
+        
+        plot.density <-  ggplot(data = state.table, aes(x = population_density_per_sqkm, y = mean_bribe)) +
+              stat_smooth(method = "lm")+
+              geom_point() + 
+              theme_minimal()+
+              ylab("")
+        
+        library(gridExtra)
+        grid.arrange(plot.urban, plot.density, plot.literacy, ncol = 3)
+        
+        #Checking the summary with literacy
+        fit1 <- lm(mean_bribe ~ literacy_percent, data = state.table)
+        summary(fit1)
+        
+        
+        
+    #Tabeller med top for hver af staterne
+        top.table <- df %>% 
+          group_by(state) %>% 
+          mutate(
+            count.state = n()
+          ) %>% 
+          ungroup() %>% 
+          
+          group_by(state, type) %>% 
+          summarise(
+            mean_bribe = mean(paid),
+            count = n(), 
+            count.state = mean(count.state),
+            share = count / count.state
+          ) %>% 
+          
+          top_n( n = 3, wt = share) %>% 
+          ungroup() %>% 
+          arrange(desc(count.state), desc(share)) %>% 
+        
+          filter(count.state > 33)
+            
+      top.table <- top.table[-7,]
+      top.table$state <- as.factor(top.table$state)
+      top.test <- top.table %>% filter(state == "Assam")
+      
+      
+      # FACET WRAP
+           
+      plot <- ggplot( data = top.table)+
+              facet_wrap( ~ state, ncol = 3, scales = "free") +
+              geom_bar(stat = "identity", aes(x = reorder(type, -share), y = share)) +
+              # coord_flip() + 
+              xlab("")+
+              ylab("")+
+              ylim(0, 0.95)+
+              ggtitle("Top 3 bribe types in the top 6 states \n by number of reports, percent")
+      plot
+        
+        
+
+
 
 
