@@ -2,7 +2,7 @@
 # settings
 
 Sys.setlocale(category = "LC_ALL", locale = "UTF-8")
-options(scipen=999)
+
 
 # loading packages: 
 
@@ -11,13 +11,6 @@ library("dplyr")
 library("tidyr")
 library("ggplot2")
 library("rvest")
-library("rgeos")
-library("maptools")
-library("sp")
-library("ggplot2")
-library("gpclib")
-library("viridis")
-library("ggthemes")
 
 # **************** (1) data scraping *********************** #
 
@@ -115,8 +108,6 @@ dm$n_paid <- as.numeric(dm$n_paid)
 
 # **************** (3) data analysis *********************** #
 
-# (i) distrubution plots
-
 # make an aggregate dataframe for birth certificate:
 
 agg <- dm %>%
@@ -132,41 +123,8 @@ p <- p + geom_bar(stat = "identity", fill = "darkred") + coord_flip()
 p <- p + labs( x = "Name of state", y = "# of reports", title = "Birth Certificate")
 p
 
-# (ii) mapping 
 
-#load spatial data and fortify to dataframe#
-india <- readRDS("/Users/susannesundgaardhansen/Downloads/IND_adm1.rds")
-india <- fortify(india, region="NAME_1")
-
-dm <- df %>% filter(dm$n_paid!="NA" & !is.na(dm$n_trans))
-df$n_paid=as.numeric(df$n_paid)
-df$n_district <- substring(df$n_district, 2, nchar(df$n_district))
-
-#check if names of states matches in the two datasets#
-namesInData <- levels(factor(df$n_district))
-namesInMap <- levels(factor(india$id))
-namesInData[which(!namesInData %in% namesInMap)]
-
-#correct errors and spelling#
-df$n_district<- gsub("Hadoi", "Uttar Pradesh", df$n_district)
-df$n_district<- gsub("Uttarakhand", "Uttaranchal", df$n_district)
-
-#new dataframe that summarizes over districts and amounts paid#
-df1 <- ddply(df, c("n_district"), summarise,
-             paid=sum(n_paid))
-
-#plotting the spatial data - CAUTION this takes a while! Approx. 10 minutes#
-p <- ggplot() + geom_map(data=df1, aes(map_id = n_district, fill=paid),
-                         map = india) + 
-  expand_limits(x = india$long, y = india$lat)+ 
-  coord_equal()+v
-ggtitle("Reported bribes in India")+
-  theme_tufte()+
-  scale_fill_viridis(trans="log10", na.value ="grey50",
-                     name="Amount paid \n(logs)")
-p
-
-
+  
         
 
 
