@@ -1,6 +1,7 @@
 library("rvest")
 library("ggplot2")
 library("lubridate")
+library("plyr")
 library("dplyr")
 library("stringr")
 library("XML")
@@ -20,11 +21,16 @@ setwd("/Users/oskarh/Documents/Assignment 2/Assignment-2/")
   df$date <- as.Date(df$date)
   df$views <- as.numeric(df$views)
   df$paid <- as.numeric(df$paid)
+  df$state <- str_trim(df$state)
+  
+  
   
   #Remove NAs and Currency
   df <- df %>% 
         select(-c(currency, title)) %>% 
-        filter(!is.na(paid))
+        filter(!is.na(paid)) 
+        
+    df <- df %>% filter(!is.na(state) & state!="")
 
   
 ### Basic data
@@ -54,7 +60,7 @@ setwd("/Users/oskarh/Documents/Assignment 2/Assignment-2/")
   url <- "https://en.wikipedia.org/wiki/States_and_union_territories_of_India"
   tabs <- GET(url, encoding = "UTF-8")
   tabs <- readHTMLTable(rawToChar(tabs$content), stringsAsFactors = F, header = TRUE)
-  library(plyr)  
+  
   tabs <- ldply(tabs[1:3])
   tabs <- tabs[12:40,]
   tabs <- tabs[,-c(1:5)]
@@ -66,15 +72,42 @@ setwd("/Users/oskarh/Documents/Assignment 2/Assignment-2/")
   tabs <- as.data.frame(lapply(tabs, function(y) gsub(pattern = "\\[.*\\]", replacement =  "", x = y)))
   tabs <- as.data.frame(lapply(tabs, function(y) gsub(pattern = "\\%", replacement =  "", x = y)))
   tabs <- as.data.frame(lapply(tabs, function(y) gsub(pattern = "N\\/A", replacement =  NA, x = y)))
+  # tabs$state <- gsub(x = tabs$state, pattern = "Delhi", ) #Match data from Punjab( wiki ) into Delhi (df)
+  tabs$state <- gsub(x = tabs$state, pattern = "Odisha", replacement = "Orissa")
+  tabs$literacy <- as.numeric(as.character(tabs$literacy))
+  tabs$population_density <- as.numeric(as.character(tabs$population_density))
+  tabs$urban_population_share <- as.numeric(as.character(tabs$urban_population_share))
   
-  names.wiki <- factor(tabs$name) %>% 
-                unique() %>% 
-                sort()
+#     
+#   names.wiki <- factor(tabs$name) %>% 
+#                 unique() %>% 
+#                 sort()
+#   
+#   names.df <- factor(df$state) %>% 
+#                 unique() %>%
+#                 sort()
+#   
+  tabs2 <- tabs %>% select(state, population, literacy, population_density, urban_population_share)
   
-  names.df <- factor(df$state) %>% 
-                unique() %>%
-                sort()
+  tabs3 <- full_join(state.table, tabs2, by = "state")
+  
+  df <- left_join(df, tabs2, by = "state")
+  
+  
+### Kandidater til analyse ###
+  
+  # (1) Historie i at "ikke" finde noget
+  # (2) Gennemsnitsomkostninger for bribe-typer
+  # (3) Sammenhæng mellem gennemsnitsomk. og {urban_population_share, pop_density, literacy}
+  # (4) Samlede bribes per stat
+  # (5) Fordelingen af bribes (evt. indenfor en kategori)
+  # (6) Alt på kort
+  # (7) Typer af bribes
+  # (8) Krydsplot, kun for birth-certificate, x = {density, literacy, urb_pop_share}, y = amount 
   
   
   
+  p <- ggplot(data= df, aes(x = urban_population_share, y = paid))+
+       geom_point()
+  p
   
