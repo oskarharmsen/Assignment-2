@@ -88,6 +88,7 @@ dm$n_currency  <-  gsub(pattern = "[Paid]","",as.character(dm$n_currency))
 dm$n_paid <- gsub( x = dm$n_paid, pattern = "?\\,[0-9]+\\,", replacement = NA )
 dm$n_paid <- gsub( x = dm$n_paid, pattern = "\\,", replacement = "")
 dm$n_paid <- as.numeric(dm$n_paid)
+dm <- dm %>% filter(!is.na(dm$n_paid))
 
 # export data as .csv:
 setwd("/Users/pernillekofod/Dropbox/Assignment-2")
@@ -97,6 +98,51 @@ setwd("/Users/pernillekofod/Dropbox/Assignment-2")
 
 
 
+
 # **************** (3) data analysis *********************** #
 
+ggplot(dm, aes(n_district, n_paid))+geom_histogram(stat="identity")
 
+ggmap
+
+# **************** (4) mapping **************************** #
+
+library(rgeos)
+library(maptools)
+library(sp)
+library(ggplot2)
+library(gpclib)
+library(viridis)
+library(ggthemes)
+
+#load spatial data and fortify to dataframe#
+india <- readRDS("/Users/susannesundgaardhansen/Downloads/IND_adm1.rds")
+india <- fortify(india, region="NAME_1")
+
+dm <- df %>% filter(dm$n_paid!="NA" & !is.na(dm$n_trans))
+df$n_paid=as.numeric(df$n_paid)
+df$n_district <- substring(df$n_district, 2, nchar(df$n_district))
+
+#check if names of states matches in the two datasets#
+namesInData <- levels(factor(df$n_district))
+namesInMap <- levels(factor(india$id))
+namesInData[which(!namesInData %in% namesInMap)]
+
+#correct errors and spelling#
+df$n_district<- gsub("Hadoi", "Uttar Pradesh", df$n_district)
+df$n_district<- gsub("Uttarakhand", "Uttaranchal", df$n_district)
+
+#new dataframe that summarizes over districts and amounts paid#
+df1 <- ddply(df, c("n_district"), summarise,
+             paid=sum(n_paid))
+
+#plotting the spatial data - CAUTION this takes a while! Approx. 10 minutes#
+p <- ggplot() + geom_map(data=df1, aes(map_id = n_district, fill=paid),
+                         map = india) + 
+  expand_limits(x = india$long, y = india$lat)+ 
+  coord_equal()+v
+ggtitle("Reported bribes in India")+
+  theme_tufte()+
+  scale_fill_viridis(trans="log10", na.value ="grey50",
+                     name="Amount paid \n(logs)")
+p
