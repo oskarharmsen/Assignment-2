@@ -1,0 +1,435 @@
+---
+title: "Group 8 - Assignment 2"
+author: 'Group 8: Oskar Harmsen, Dennis Hansen, Ann-Sofie Hansen & Susanne Sundgaard
+  Hansen'
+date: "November 8, 2015"
+output: html_document
+---
+###Introduction
+
+In this assignment, we seek to provide insights on patterns in corruption across India. Our analyses are based on data from www.ipaidabribe.com, an online portal for reporting bribes paid. Specifically, we scrape the latest 1000 bribe reports from the site.
+
+The assignment is written in R-markdown, and we've chosen to exhibit only the most relevant chunks of code in the html-document.
+
+```{r, message=FALSE, echo=FALSE, eval=TRUE}
+#Load needed packages
+options(scipen=999)
+library("plyr")
+library("rvest")
+library("ggplot2")
+library("lubridate")
+library("stringr")
+library("XML")
+library("httr")
+library("readr")
+library("tidyr")
+library("rgeos")
+library("maptools")
+library("sp")
+library("gpclib")
+library("viridis")
+library("ggthemes")
+library("dplyr")
+library("knitr")
+```
+
+###Data scraping
+Now to the scraping. We notice that all the relevant information can be gathered from the main reports page, we then only need to loop this for 10 pages in total, since each page contains 10 posts each. Below we show how the data is scraped, but since this takes a while, we also include a link to the scraped data at Github in the next chunk.
+
+In the Rmarkdown file our code for scraping is visible - to save time, we have provided the link to the most recent csv-file in our GitHub further below:
+
+```{r, message=FALSE, eval=FALSE, echo=FALSE}
+# declare empty global dataframe:
+df <- data.frame()
+
+# create an overall loop to collect the "underpages" at the webpage, and then start scraping. 100 pages = 1000 cases.
+for (i in seq(0,990,10)){
+
+# generate the links to scape data from:
+t <- c(i)
+t <- t[1]
+
+link <- "http://www.ipaidabribe.com/reports/paid?page="
+link <- paste(paste(link, t, sep = ""),"#gsc.tab=0", sep ="")
+
+# scrape the data from the link created above:
+link <- html(link) 
+
+n_title <- link %>%
+  html_nodes(".heading-3 a") %>%
+  html_text()
+
+n_paid <- link %>%
+  html_nodes(".paid-amount span") %>%
+  html_text()
+
+n_department <- link %>%
+  html_nodes(".name a") %>%
+  html_text()
+
+n_views <- link %>%
+  html_nodes(".overview .views") %>%
+  html_text()
+
+n_city <- link %>%
+  html_nodes(".location") %>%
+  html_text()
+
+n_trans <- link %>%
+  html_nodes(".transaction a") %>%
+  html_text()
+
+n_date <- link %>%
+  html_nodes(".date") %>%
+  html_text() %>%
+  strptime(format = "%B %d, %Y") %>%
+  as.character()
+
+n_timeago <- link %>%
+  html_nodes(".time-span") %>%
+  html_text()
+
+# make a dataset containing the the scraped information and bring it together to the global dataframe, df.
+data <- data.frame(cbind(n_date, n_trans, n_city, n_views, n_department, n_paid, n_title, n_timeago))
+df <- rbind(df,data)
+
+# command to slow down the scrapng process.
+Sys.sleep(0.6)
+}
+```
+
+###Data cleaning
+Some data cleaning is needed - luckily there are not too many spelling errors or mismatches since the "City"-box on the webpage is a dropdown-menu. However some of the amounts reported has erroneous decimals and are difficult to decipher, hence they are removed.   
+```{r, message=FALSE, eval=FALSE, echo=FALSE}
+# split up "n_paid" and n_city":
+dm <- df %>%
+  separate(n_paid, c("n_currency","n_paid"), 8) %>%
+  separate(n_city, c("n_town", "n_district"),",") 
+
+# remove "view" from the n_view variable and "Paid" from n_currency:
+dm$n_views <-  gsub(pattern = "[views]", "", as.character(dm$n_views))
+dm$n_currency  <-  gsub(pattern = "[Paid]","",as.character(dm$n_currency)) 
+
+#  remove ,'s in n_paid (2 times)
+dm$n_paid <- gsub( x = dm$n_paid, pattern = "?\\,[0-9]+\\,", replacement = NA )
+dm$n_paid <- gsub( x = dm$n_paid, pattern = "\\,", replacement = "")
+dm$n_paid <- as.numeric(dm$n_paid)
+
+#Update names
+names(df) <- c("date", "type", "town", "state", "views", "department", "currency", "paid", "title")
+
+```
+
+###Loading dataset
+
+```{r, message=FALSE, eval=TRUE, echo = TRUE}
+df <- read.csv(file = "https://raw.githubusercontent.com/oskarharmsen/Assignment-2/master/assign2.csv",
+               sep = ";")
+names(df) <- c("date", "type", "town", "state", "views", "department", "currency", "paid", "title")
+```
+```{r, message=FALSE, echo=TRUE, eval=TRUE}
+#Correct classes of columns
+  df$town <- str_trim(df$town)
+  df$title <- str_trim(df$title)
+  df$date <- as.Date(df$date)
+  df$views <- as.numeric(df$views)
+  df$paid <- as.numeric(df$paid)
+  df$state <- str_trim(df$state)
+
+#Remove NAs and Currency
+  df <- df %>% 
+    select(-c(currency, title)) %>% #Remove irrelevant columns
+    filter(!is.na(paid)) #Remove observations with NA in paid
+  
+  df <- df %>% filter(!is.na(state) & state!="") #Remove observations with NA or missing in state
+```
+
+###Descriptive Statistics
+
+```{r, message = FALSE, eval = TRUE, echo = TRUE}
+
+# make an aggregate dataframe for types and # of bribes:
+    
+ agg <- df %>%
+   group_by(type) %>%
+   summarise( count = n(), mean = mean(paid), median = median(paid)) %>%
+   arrange(-count)
+
+  #Plot
+   p <-  ggplot(agg, aes( x = reorder(type, -count), y = count)) +
+         geom_bar(stat = "identity", fill = "black", alpha = 0.8) +
+         geom_hline(y = mean(agg$count), colour = "red") +
+         coord_flip() + labs( x = "Type", y = "# of bribes") +
+         geom_text(aes(label = round(mean, digits = 0)), 
+                   size = 3, y = 200, colour = "darkblue")+
+        ggtitle("#reports by type,\n with average bribe size for each")
+   p
+```
+
+The figure shows an overview of the distribution of various types of bribes. The red line shows the average number of bribe rapports. It's clear that the distribution is skewed towards a few types of bribes. A reason could be the frequency of the demand for each type of bribe. 
+You could argue that the demand for bith certificate must be higher than for e.g vehicle registration, and for that reason the number of bribes must also be higher for bith certificate. The blue numbers illustrate the average amount of the bribe paid. No clear relationsship between the number of reports and amount paid.
+
+```{r, message = FALSE, eval = TRUE, echo = TRUE}
+
+# aggregate dataframe for birth certificate:
+
+  #Create dataframe
+  agg1 <- df %>%
+  filter(paid != "NA", state != " ", type == "Birth Certificate") %>%
+  group_by(state) %>%
+  summarise( count = n(), mean = mean(paid)) %>%
+  arrange(-count)
+
+  # barplot showing the distribution of birth certificate reports by district:
+   p <-  ggplot(agg1, aes( x = reorder(state, -count), y = count)) +
+        geom_bar(stat = "identity", fill = "black", alpha = 0.8) + 
+        geom_hline(y = mean(agg1$count), colour = "red") +
+        coord_flip() + labs( x = "State", y = "# of birth certificate bribes") +
+        geom_text(aes(label = round(mean, digits = 0)), size = 3, y = 60, colour = "darkblue")+
+        ggtitle("# birth certificate bribes by state, \n and average bribe size within state")
+  p
+```
+
+The figure illustrates the distrubution of the number of bribe reports on state level. The red line is again the average number of reports. Again, it's a few states that skews the average. 
+In general highly populated states also has a high number of reported bribes. We could have selection bias here. The most populattes states could also have easier acces to IT and internet, which the less populated states could have less accces to, and therefore skewes the reports toward the higly populated states. No relationship between the average amount paid and number of bribe reports (blue numbers).
+
+###Pairing with Indian demographic data 
+The code below shows how we load demographic state-level data for India from wikipedia, and merge it with our scraped dataset to be able to pursue greater insight into the determinants of corruption.
+
+```{r, message=FALSE, echo=TRUE, eval=TRUE, warning=FALSE}
+
+# Get table from Wikipedia
+  
+  #Load website 
+  url <- "https://en.wikipedia.org/wiki/States_and_union_territories_of_India"
+  tabs <- GET(url, encoding = "UTF-8")
+  tabs <- readHTMLTable(rawToChar(tabs$content), stringsAsFactors = F, header = TRUE)
+  
+  #Reduce html-document to the relevant table
+  tabs <- ldply(tabs[1:3]) #Only the first three elements of the list contain parts of the data
+  tabs <- tabs[12:40,] #delete unnecessary rows
+  tabs <- tabs[,-c(1:5)] #delete unnecessary columns
+  
+  #Clean the resulting table
+  names(tabs) <- c("state", "code", "formation_date", "population", "area", "langugages", "capital",
+                   "largest_city_if_not_capital", "population_density", "literacy", 
+                   "urban_population_share") #Naming the columns
+  
+  #Remove Wiki-links, percentages and NAs
+  tabs <- as.data.frame(lapply(tabs, function(y) gsub(pattern = "\\[.*\\]", replacement =  "", x = y)))
+  tabs <- as.data.frame(lapply(tabs, function(y) gsub(pattern = "\\%", replacement =  "", x = y)))
+  tabs <- as.data.frame(lapply(tabs, function(y) gsub(pattern = "N\\/A", replacement =  NA, x = y)))
+
+  #Convert numeric columns to numeric class  
+  tabs$literacy <- as.numeric(as.character(tabs$literacy))
+  tabs$population_density <- as.numeric(as.character(tabs$population_density))
+  tabs$urban_population_share <- as.numeric(as.character(tabs$urban_population_share))
+  
+  #Change to earlier spelling method, to fit with ipaidabribe.com-data
+  tabs$state <- gsub(x = tabs$state, pattern = "Odisha", replacement = "Orissa")
+  
+  #Remove irrelevant columns
+  tabs <- tabs %>% select(state, population, literacy, population_density, urban_population_share)
+  
+  #Add demographic state-level data to each observation
+  df <- left_join(df, tabs, by = "state")
+```
+
+
+###Mapping the data
+
+We use spatial data to map choropleth maps of India - this is immensely time-consuming to plot, so we include the finished plots as an image-file. The code for plotting the maps can be seen in the rmarkdown-file.
+
+```{r, eval=FALSE, echo=FALSE, eval=FALSE}
+
+#load spatial data and fortify to dataframe#
+download.file("https://raw.githubusercontent.com/oskarharmsen/Assignment-2/master/IND_adm1.rds", "India")
+india <- readRDS("India")
+india <- fortify(india, region="NAME_1")
+
+#check if names of states matches in the two datasets#
+namesInData <- levels(factor(df$state))
+namesInMap <- levels(factor(india$id))
+namesInData[which(!namesInData %in% namesInMap)]
+
+#correct errors and spelling#
+df$state <- gsub("Hardoi", "Uttar Pradesh", df$state)
+df$state <- gsub("Uttarakhand", "Uttaranchal", df$state)
+
+#new dataframes to use for plotting#
+df1 <- df %>% 
+  group_by(state) %>% 
+  summarise(count = n(), aggpaid=sum(paid))
+
+df2 <- df %>%
+  group_by(state)%>%
+  summarise(count=n())
+
+df3 <- df %>%
+  group_by(state)%>%
+  summarise(lit=mean(literacy))
+
+df4 <- df %>%
+  group_by(state)%>%
+  summarise(urban=mean(urban_population_share))
+
+#plotting the spatial data - CAUTION this takes a while! Approx. 10 minutes#
+p1 <- ggplot() + 
+  geom_map(data=df1, aes(map_id = state, fill=aggpaid), 
+           map = india) + 
+  expand_limits(x = india$long, y = india$lat)+ 
+  coord_equal()+
+  ggtitle("Paid: Reported bribes in India")+
+  theme_tufte(ticks = FALSE)+
+  theme(plot.title = element_text(lineheight=.8, face="bold"))+
+  scale_fill_viridis(trans="log10", na.value ="grey50",
+                     name="Amount paid \n(logs)")
+
+p2 <- ggplot() + 
+  geom_map(data=df2, aes(map_id = state, fill=count), 
+           map = india) + 
+  expand_limits(x = india$long, y = india$lat)+ 
+  coord_equal()+
+  ggtitle("Count: Reported bribes in India")+
+  theme_tufte(ticks = FALSE)+
+  theme(plot.title = element_text(lineheight=.8, face="bold"))+
+  scale_fill_viridis(na.value ="grey50",
+                     name="Count")
+p3 <- ggplot() + 
+  geom_map(data=df3, aes(map_id = state, fill=lit), 
+           map = india) + 
+  expand_limits(x = india$long, y = india$lat)+ 
+  coord_equal()+
+  ggtitle("Literacy rates in India")+
+  theme_tufte(ticks = FALSE)+
+  theme(plot.title = element_text(lineheight=.8, face="bold"))+
+  scale_fill_viridis(na.value ="grey50",
+                     name="Literacy")
+
+p4 <- ggplot() + 
+  geom_map(data=df4, aes(map_id = state, fill=urban), 
+           map = india) + 
+  expand_limits(x = india$long, y = india$lat)+ 
+  coord_equal()+
+  ggtitle("% of total population that is urban")+
+  theme_tufte(ticks = FALSE)+
+  theme(plot.title = element_text(lineheight=.8, face="bold"))+
+  scale_fill_viridis(na.value ="grey50",
+                     name="Urban pop.")
+```
+
+![Choropleth maps of India](http://raw.githubusercontent.com/oskarharmsen/Assignment-2/master/Maps.png?raw=true)
+
+It is clear that the majority of posts and also the amounts paid are highest in the state of Karnataka. Furthermore we can generally sense a higher frequency and activity through a vertical line in the middle of the country. We compare this to the literacy rates and percentage of urban population through India. The correlation here is not super-evident. We would expect the literacy rate and urban population to be high in the same areas as the high frequencies of posts, which the maps, somewhat, concludes. 
+
+
+###Testing correlations between corruption levels and demographic statistics
+* Assumption: We assume that bribe report patterns are similar across states.
+
+Let's investigate if there is any correlation between the levels of corruption and literacy, urban population and population density. We would assume a negative connection, i.e. that higher literacy implying higher education would mean lower average bribes. 
+
+```{r, echo=FALSE, eval=TRUE, message = TRUE}
+#Create summary dataframe on state level
+        state.table <- df %>%
+          group_by(state) %>% 
+          summarise(
+            count = n(),
+            mean_bribe = mean(paid),
+            median_bribe = median(paid), 
+            urban_population_share = mean(urban_population_share),
+            literacy_percent = mean(literacy),
+            population_density_per_sqkm = mean(population_density)
+            ) %>%   
+          arrange(desc(count))
+  
+```
+
+Below shows example of chode-chunk to run one of the plots below
+
+```{r, echo=TRUE, eval=TRUE, message = FALSE, warning = FALSE}        
+        #Example of Plot
+        plot.literacy <-  ggplot(data = state.table, aes(x = literacy_percent, y = mean_bribe)) +
+              stat_smooth(method = "lm")+
+              geom_point() + 
+              theme_minimal()+
+              ylab("")
+```  
+  
+  
+```{r, echo=FALSE, eval=TRUE, message = FALSE, warning = FALSE}           
+        plot.urban <-  ggplot(data = state.table, aes(x = urban_population_share, y = mean_bribe)) +
+              stat_smooth(method = "lm")+
+              geom_point() + 
+              theme_minimal()
+        
+        plot.density <-  ggplot(data = state.table, aes(x = population_density_per_sqkm, y = mean_bribe)) +
+              stat_smooth(method = "lm")+
+              geom_point() + 
+              theme_minimal()+
+              ylab("")
+        
+        library(gridExtra)
+        grid.arrange(plot.urban, plot.density, plot.literacy, ncol = 3)
+``` 
+
+The lines are all slightly decreasing, implying a negative correlation between all covariates and the level of bribes. However when we test the correlation with the most evident correlation (literacy rate) in a linear model, the coefficient is not statistically significant. 
+
+```{r, echo=FALSE, eval=TRUE, message = FALSE, warning = FALSE}   
+        #Checking the summary with literacy
+        fit1 <- lm(mean_bribe ~ literacy_percent, data = state.table) #perform regression 
+        summary(fit1) # Show regression output
+``` 
+
+This could be due to many things. The causes of corruption are fundamentally unclear and higher literacy, implying higher education, implying higher income could also induce higher bribes due to higher disposable incomes. A major issue in this kind of data is also that it is *self-reported* - which implies mis- and underreporting. Thus it is difficult to conclude anything general on these data. 
+
+```{r, echo=FALSE, eval=TRUE, message = FALSE, warning = FALSE}   
+    #Create tables with tops for each state
+        
+        #Count state reports
+        top.table <- df %>% 
+          group_by(state) %>% 
+          mutate(
+            count.state = n()
+          ) %>% 
+          ungroup() %>% 
+        
+          #Create tables on state/type-level, with relevant variables
+          group_by(state, type) %>% 
+          summarise(
+            mean_bribe = mean(paid),
+            count = n(), 
+            count.state = mean(count.state),
+            share = count / count.state
+          ) %>% 
+          top_n( n = 3, wt = share) %>% #Choose top 3 for each state
+          ungroup() %>% 
+          arrange(desc(count.state), desc(share)) %>% 
+          filter(count.state > 33) #Bad way of removing those outside of top 6 states by count
+            
+      top.table <- top.table[-7,] #Removing an arbitrary observation, caused by a tie
+      
+      top.table$state <- as.factor(top.table$state)
+```      
+    
+###Top 3 bribe types in the top 6 states
+
+Below we zoom in on the six most bribery "active" states and look at their top 3 bribe activities. It is evident that bribes in relation to "Birth certificates" are driving many of the states but not all of them. For instance in Madhya Pradesh, bribes relating to "Issue of Ration card" is the most frequent form of bribery, implying diversity in bribery type across states. 
+      
+```{r, echo=TRUE, eval=TRUE, message = FALSE, warning = FALSE}         
+      
+      # FACET WRAP
+           
+      plot <- ggplot( data = top.table)+
+              facet_wrap( ~ state, ncol = 3, scales = "free") +
+              geom_bar(stat = "identity", aes(x = reorder(type, -share), y = share)) +
+              # coord_flip() + 
+              xlab("")+
+              ylab("")+
+              ylim(0, 0.95)+
+              scale_x_discrete(labels = function(x) str_wrap(x, width = 10))+
+              ggtitle("Top 3 bribe types in the top 6 states \n by number of reports, percent")
+      plot
+```
+
+###Conclusion
+The main conclusion is that it is difficult to conclude something general when working with self-reported data. Maybe the webpage is more known in some states than others, maybe the urban areas have better access to IT etc. Scraping more observations and perhaps at different times during the year might be sufficient to validate the results further. 
