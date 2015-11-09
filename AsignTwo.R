@@ -194,9 +194,20 @@ names(df) <- c("date", "type", "town", "state", "views", "department", "currency
  p <- ggplot(agg, aes( x = reorder(type, -count), y = count))
  p <- p + geom_bar(stat = "identity", fill = "black", alpha = 0.8) + geom_hline(y = mean(agg$count), colour = "red")
  p <- p + coord_flip() + labs( x = "Type", y = "# of bribes") 
- p <- p + geom_text(aes(label = round(mean, digits = 0)), size = 3, y = 200, colour = "darkblue")
+ p <- p + geom_text(aes(label = round(mean, digits = 0)), size = 3, y = 200, colour = "darkblue") 
  p
+ 
+ text: Figuren viser en oversigt over fordeleing af de forskellige korruptionstyper. 
+        Den røder linje illustrerer det gennemsnitlige antal af korruptionsrapporter per korruptionstype. Det ses, at fordelingen samler sig omkring et fåtal af de forskellige typemuligheder.
+        Det kan hænge sammen med den generelle hyppighed for de enkelte typer. Eksempelvis må man antage, at hyppigheden for fødselcertifikat må være større end regestrering af køretøjer, hvorfor
+        antallet alt andet lige må være højere. 
+        De blå tal illustrerer det gennemsnitlige beløb i bestikkelse for hver enkelt type.
+        Det kan ses, at der ikke umiddelbart er en sammenhæng mellem antallet af korruptionsrapporteringer og beløbet betalt for de enkelte typer.  
 
+text: Figuren viser fordelingen af antallet af bestikkelsesrapporter fordelt på stater. Den røder linje er det gennemsnitlige antal af rapporter. Igen er det et fåtal af stater som trækker gennemsnittet op. 
+Generelt er det stater med store befolkninger som også har et højt antal af rappporterede bestikkelser. Der kan være noget selection bias her, da de store stater kan have mere tilgængelighed til IT, og dermed 
+mulighed for at rapportere på www.ipaidabribe.com, hvorimod de mindre stater måske ikke har den samme tilgænglighed. Igen er der ikke nogen generel sammenhæng mellem antallet af bestikkelser og størrelsen på bestikkelsesbeløbet (blå tal). 
+ 
 # aggregate dataframe for birth certificate:
 
 agg1 <- df %>%
