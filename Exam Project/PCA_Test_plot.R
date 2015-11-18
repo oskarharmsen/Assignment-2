@@ -123,7 +123,7 @@ data <- data.org
                                      "R",     # Radikale
                                      "C",      # Konservative
                                      "SF",         # SF
-                                     "Y",           # Liberal Alliance
+                                     "I",           # Liberal Alliance
                                      "K",            # Kristendemokraterne
                                      "O",          # Dansk Folkeparti
                                      "Ø",          # Enhedslisten 
@@ -175,30 +175,6 @@ data <- data.org
        theme_minimal() +
        ylab("Average distance from 'neither agree nor disagree',\n on 0-2 scale") +
        xlab("")+
-       ggtitle("What parties have the most extreme opinions? ")
+       ggtitle("What parties have the most extreme opinions?")
   p                         
-  
-  
-  
-  
-    scale_fill_manual(values = c("red",             # Socialdemokratiet
-                                 "darkolivegreen4", # Alternativet
-                                 "darkorchid4",     # Radikale
-                                 "lightgreen",      # Konservative
-                                 "hotpink",         # SF
-                                 "cyan1",           # Liberal Alliance
-                                 "grey",            # Kristendemokraterne
-                                 "yellow",          # Dansk Folkeparti
-                                 "orange",          # Enhedslisten 
-                                 "darkblue"),     # Venstre    
-                      labels = c("S",             # Socialdemokratiet
-                                 "Å", # Alternativet
-                                 "R",     # Radikale
-                                 "C",      # Konservative
-                                 "SF",         # SF
-                                 "Y",           # Liberal Alliance
-                                 "K",            # Kristendemokraterne
-                                 "O",          # Dansk Folkeparti
-                                 "Ø",          # Enhedslisten 
-                                 "V")) +     # Venstre   
   
