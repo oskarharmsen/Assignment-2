@@ -140,3 +140,65 @@ data <- data.org
         ggtitle("Mean response to survey \n questions, by party")
         
   p      
+
+  
+  
+  
+## --- How close are parties to the middle? --- ##
+  
+  party.middle <- party.means
+  party.middle[,2:16] <- abs(party.middle[,2:16]-3)  #Re-align around center (defining center = 0) and take absolutes
+  party.middle[,17] <- rowMeans(party.middle[,2:16]) #Compute averages
+  
+  party.middle <- party.middle %>% 
+          select( party = party, mean.dist.from.center = V17) %>% 
+          arrange(desc(mean.dist.from.center))
+  
+
+  p <- ggplot(data = party.middle, aes( x = reorder(party, mean.dist.from.center), y = mean.dist.from.center)) +
+       geom_bar(stat = "identity", 
+                fill = c(
+                         "grey",            # Kristendemokraterne
+                         "darkblue",        # Venstre    
+                         "darkorchid4",     # Radikale
+                         "lightgreen",      # Konservative
+                         "yellow",          # Dansk Folkeparti
+                         "red",             # Socialdemokratiet
+                         "darkolivegreen4", # Alternativet
+                         "hotpink",         # SF
+                         "cyan1",           # Liberal Alliance
+                         "orange"           # Enhedslisten 
+                         ),           
+                color = "black"
+                  ) +
+       coord_flip() +
+       theme_minimal() +
+       ylab("Average distance from 'neither agree nor disagree',\n on 0-2 scale") +
+       xlab("")+
+       ggtitle("What parties have the most extreme opinions? ")
+  p                         
+  
+  
+  
+  
+    scale_fill_manual(values = c("red",             # Socialdemokratiet
+                                 "darkolivegreen4", # Alternativet
+                                 "darkorchid4",     # Radikale
+                                 "lightgreen",      # Konservative
+                                 "hotpink",         # SF
+                                 "cyan1",           # Liberal Alliance
+                                 "grey",            # Kristendemokraterne
+                                 "yellow",          # Dansk Folkeparti
+                                 "orange",          # Enhedslisten 
+                                 "darkblue"),     # Venstre    
+                      labels = c("S",             # Socialdemokratiet
+                                 "Å", # Alternativet
+                                 "R",     # Radikale
+                                 "C",      # Konservative
+                                 "SF",         # SF
+                                 "Y",           # Liberal Alliance
+                                 "K",            # Kristendemokraterne
+                                 "O",          # Dansk Folkeparti
+                                 "Ø",          # Enhedslisten 
+                                 "V")) +     # Venstre   
+  
