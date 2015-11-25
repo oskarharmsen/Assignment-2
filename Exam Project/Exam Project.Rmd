@@ -1,0 +1,35 @@
+---
+title: "Do voting advice applications predict election outcomes?"
+subtitle: "Exam Project, Social Data Science"
+author: "Group 8"
+date: "November 2015"
+output: html_document
+---
+
+
+
+#### Research Question
+
+Voting Advice Applications (VAAs) - applications where voters are 'matched' with candidates based on responses to a number of political questions - have a high penetration among the electorate in Denmark. More than 1 million Danish voters used the leading Danish VAA (from DR) during the 2015 General Election (Folketingsvalg), corresponding to approximately 25% of all eligible voters (Danmarks Radio, 2015).
+
+Most previous literature on VAAs has focused on whether and how VAA users (voters) are affected by their test results, based typically on surveys [e.g. Ruusuvirta 2009]. In our research project, we instead propose to examine the information content of candidates' responses directly, coupled with demographic variables and election outcomes.
+
+This dataset allows us to examine a range of questions:
+
+* Are election outcomes predictable from VAA data? 
+    + Will candidates who center around the party median (mean voter theorem) or those that are more distinct relative to their peers have a higher chance of election?
+* Do Danish parties have distinct political views? (can party affiliation be predicted from answers? For what parties?)
+* Can the Danish political spectrum meaningfully be mapped into fewer dimensions? (For example a distributional and values-based axis [see e.g. Slothuus et al. 2009])
+
+
+#### Data
+Our primary data set will consist of each candidate's response to Danmarks Radios VAA (Kandidattest) 2015. The survey consists of 15 political statements, to which the candidate (or user) must specify level of agreement, on a five-point Likert-type scale. There are recorded answers for 724 candidates - more than 90 percent. This data will be scraped from the DR website. This primary data will be matched with data on election outcomes, party affiliation, voting district, previous political history and demographic variables such as age, gender, education etc.
+
+#### Methods
+Questions 1 and 2 are, in a statistical sense, supervised learning problems, where we expect that simple decision trees as well as more complicated classification models can yield insightful results. There may be a need to create new variables from the existing set, for instance defining "political distance" to candidates with the same electorate. Question 3 is a problem of dimensionality reduction, where we propose to examine and compare several options, including e.g. Principal Component Analysis or grouping questions based on political theory. One particular objective will be to obtain a depiction of the Danish political landscape in two dimensions.
+
+#### Literature
+
+* Talonen, Sulkava (2011) Analyzing Parliamentary Elections Based on Voting Advice Application Data.
+* Ruusuvirta, O. & Rosema, M. (2009). Do online vote selectors influence electoral participation and the direction of the vote?
+* Slothuus, Rune, et al. Måling af politiske værdier og informationsbearbejdning. Nye indeks for fordelingspolitik, værdipolitik og "Need to Evaluate" blandt danske vælgere. Working paper. Department of Political Science and Government, University of Aarhus, Denmark, 2010.
