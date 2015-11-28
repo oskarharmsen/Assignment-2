@@ -36,3 +36,7 @@ dst$Stedfor_nr<-as.factor(as.character(dst$Stedfor_nr))
 df <- left_join(data, dst, by=c("name"="Navn"))
 df <- df[-708,]
 df <- df[-616,]
+
+df2 <- left_join(data, dst, by=c("votes"="Stemmer_pers"))
+df2 <- df2 %>% filter (!duplicated(df2$name))
+
