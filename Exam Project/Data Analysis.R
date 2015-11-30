@@ -180,6 +180,26 @@ library("ggplot2")
   library(ggfortify)
   autoplot(prcomp(data[,5:19]), loadings = TRUE, loadings.colour = 'blue',
            loadings.label = TRUE, loadings.label.size = 3)
+  
+  
+  
+#### Decision tree analysis ####
+  
+  library(rpart)
+  set.seed(1)
+  
+  train <- sample( x = 1:nrow(data), size = 2/3 * nrow(data), replace = FALSE)
+  
+  data.train <- data[train, ]
+  data.test <- data[-train,]
+  
+  
+  model = rpart(party ~ ., data = data.train[,c(3,5:19)], method = "class")
+  partychoice = predict(model, newdata = data.test[,c(3,5:19)], type = "class")
+  summary(model)
+  
+  library("rpart.plot")
+  prp(model, type = 4, extra = 2, nn = TRUE)
 
 #### TRASH #####  
   
