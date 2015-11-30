@@ -235,15 +235,15 @@ merge_final = merge_final[-702,]
 
 # .. variable som optræder flere gange slettes og der navngives:
 
-merge_final = select(merge_final, -age, -party, -id.k, -id.r)
+merge_final = select(merge_final, -age, -party, -id.r, -id.k)
 
 names(merge_final) = c("Navn", "Stemmer","Uddannelse","Forebyggelse","Sundhed","Velfærd","Arbejdsmarked_1",
                "Arbejdsmarked_2", "Økonomi", "Trafik", "Ret", "Social", "Integration", "EU", 
                "Udvikling", "Miljø", "Kultur", "Parti", "Storkreds", "Lokalkreds", "Alder", "Titel", 
-               "Bopæl", "Køn", "Valgt_ved_sidste_valg") 
+               "Bopæl", "Køn", "Valgt_ved_sidste_valg" ) 
 
 # .. afslutningsvist eksporteres det nye datasæt til en .csv fil kaldet ft15_final:
 
-write_csv(merge_final, "/users/dennishansen/ft15_final.csv")
+write_csv(merge_final, "/Users/dennishansen/Documents/untitled folder/ft15_final.csv")
 
 
