@@ -235,7 +235,7 @@ merge_final = merge_final[-702,]
 
 # .. variable som optræder flere gange slettes og der navngives:
 
-merge_final = select(merge_final, -age, -party, -id.r, -id.k)
+merge_final = select(merge_final, -age, -party, -id.r, -id.k) ## OSKAR: Lad v�re med at fjerne age og party her. Age er bedre, og party fucker data analysis kodernede :)
 
 names(merge_final) = c("Navn", "Stemmer","Uddannelse","Forebyggelse","Sundhed","Velfærd","Arbejdsmarked_1",
                "Arbejdsmarked_2", "Økonomi", "Trafik", "Ret", "Social", "Integration", "EU", 
@@ -273,7 +273,7 @@ dst$Stemmer_pers<-as.numeric(as.character(dst$Stemmer_pers))
 dst$Valgt_nr<-as.factor(as.character(dst$Valgt_nr))
 dst$Stedfor_nr<-as.factor(as.character(dst$Stedfor_nr))
 
-merge_final <- read.csv(file="/Users/susannesundgaardhansen/GitHub/Assignment-2/Exam\ Project/ft15_final.csv", header = T)
+merge_final <- read.csv(file="ft15_final.csv", header = T)
 
 ##Merger med merge_final
 df <- left_join(merge_final, dst, by="Navn")
@@ -295,8 +295,11 @@ final <- rbind(df, df2)
 final <- final[-590,]
 final <- final[-516,]
 
+final <- tolower(final)
+names(final) <- tolower(names(final))
+
 # .. afslutningsvist eksporteres det nye datasæt til en .csv fil kaldet ft15_final:
 
-write.csv(final, "/Users/susannesundgaardhansen/GitHub/Assignment-2/Exam\ Project/final.csv")
+write.csv(final, "final.csv")
 
 
