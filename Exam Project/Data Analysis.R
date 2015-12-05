@@ -11,7 +11,7 @@ library("ggplot2")
   data <- data.org #Load a "working" dataset
 
   ## Map responses to Likert-scale-style numeric
-    for (i in 5:19){ 
+    for (i in 17:29){ 
       data[,i] <- data[,i] %>% 
       gsub(x = ., pattern = "Helt enig", replacement = 5) %>% 
       gsub(x = ., pattern = "Delvist enig", replacement = 4) %>% 

@@ -2,7 +2,7 @@
 Sys.setlocale(category = "LC_ALL", locale = "UTF-8")
 
 #Set working directory
-setwd(dir = "")  #  <-- IMPORTANT: insert link to GitHub synced path on your computer here.
+setwd(dir = "/Users/oskarh/Documents/Assignment 2/Group 8/Exam Project")  #  <-- IMPORTANT: insert link to GitHub synced path on your computer here.
 
 # loading packages
 library(readr)
@@ -11,6 +11,8 @@ library(XML)
 library(rvest)
 library(stringr)
 library(httr)
+
+##### Part 1: Scrape data form folketingsvalg-2015.dk ####### ---------------------
 
 # First of all, we want to scrape every candidate name from http://www.folketingsvalg-2015.dk
 # To do that, we have to loop through every pari name and then create links to scrape from:
@@ -143,7 +145,7 @@ kandidat.data <- kandidat.data %>%
   
   # 5. sammenkobling med det orginale data
 
- raw <- read_csv("dk_ft15_politician_responses.csv")
+ raw <- read_csv("dk_ft15_politician_responses_DR_DATA_ONLY.csv")
  
   # .. først rettes partinavn:      
 raw = raw %>%
@@ -170,7 +172,8 @@ raw = raw %>%
   kandidat.data$navn[663] = "Anette Bolvig"
   kandidat.data$navn[363] = "Giajenthiran Velmurugan"
   
-raw = rename(raw, navn = name)
+  #raw <- rename(raw, navn = name)
+  names(raw)[1] <- "navn"
 
 # .. data for valgtesten samt kandidater merges (dem som altså har sammenlignelige navne):
 
@@ -270,8 +273,10 @@ merge_final = merge_final %>%
                 `INTEGRATION__Offentlige institutioner i Danmark tager for mange hensyn til religiøse minoriteter` = `INTEGRATION__Offentlige institutioner i Danmark tager for mange hensyn til religiøse minoriteter`,
                 `EU__EU bestemmer for meget i forhold til dansk lov` = `EU__EU bestemmer for meget i forhold til dansk lov`,
                 `UDVIKLING__Ulandsbistanden skal sænkes` = `UDVIKLING__Ulandsbistanden skal sænkes`,
+                `MILJØ__Indsatsen for at forbedre miljøet skal gå forud for økonomisk vækst` = `MILJØ__Indsatsen for at forbedre miljøet skal gå forud for økonomisk vækst`,
                 `KULTUR__Den offentlige kulturstøtte skal sænkes` = `KULTUR__Den offentlige kulturstøtte skal sænkes`
             )
+
 
 #Export work in progress data set
 write.table(x = merge_final, file = "dk_ft15_politician_responses_withoutDST.csv", fileEncoding = "UTF-8", sep = ",", row.names = FALSE)
@@ -280,7 +285,7 @@ write.table(x = merge_final, file = "dk_ft15_politician_responses_withoutDST.csv
 
 
 
-#### Scraping and merging with data from Statistics Denmark -------------------
+#### Part 2: Scraping and merging with data from Statistics Denmark #### -------------------
 
 rm( list = ls() ) #Clear work space
 
@@ -323,15 +328,12 @@ dst$stedfor.nr<-as.factor(as.character(dst$stedfor.nr))
 
 merge_final <- read.csv(file="dk_ft15_politician_responses_withoutDST.csv", header = TRUE)
 
-#DELETE THIS AGAIN
-test  <- read.csv(file="ft15_final.csv", header = TRUE)
-
 df <- left_join(merge_final, dst, by="name")
 
 df1 <- df %>% 
   filter(is.na(df$votes.pers))
 
-df1 <- df1[,1:24]
+df1 <- df1[,1:25]
 
 df2 <- left_join(df1, dst, by=c("pers.votes"="votes.pers"))
 df2 <- df2 %>% filter (!duplicated(df2$name.x))
@@ -417,20 +419,16 @@ df <- df %>% filter (!is.na(df$votes.pers))
             TRAFIK__Investeringer.i.kollektiv.trafik.skal.prioriteres.højere.end.investeringer.til.fordel.for.privatbilisme = TRAFIK__Investeringer.i.kollektiv.trafik.skal.prioriteres.højere.end.investeringer.til.fordel.for.privatbilisme,
             RET__Straffen.for.grov.vold.og.voldtægt.skal.skærpes = RET__Straffen.for.grov.vold.og.voldtægt.skal.skærpes,
             SOCIAL__Kontanthjælpen.skal.sænkes..så.den.økonomiske.gevinst.ved.at.arbejde.bliver.større = SOCIAL__Kontanthjælpen.skal.sænkes..så.den.økonomiske.gevinst.ved.at.arbejde.bliver.større,
-            INTEGRATION__Offentlige.institutioner.i.Danmark.tager.for.mange.hensyn.til.religiøse.minoriteter = SOCIAL__Kontanthjælpen.skal.sænkes..så.den.økonomiske.gevinst.ved.at.arbejde.bliver.større,
+            INTEGRATION__Offentlige.institutioner.i.Danmark.tager.for.mange.hensyn.til.religiøse.minoriteter = INTEGRATION__Offentlige.institutioner.i.Danmark.tager.for.mange.hensyn.til.religiøse.minoriteter,
             EU__EU.bestemmer.for.meget.i.forhold.til.dansk.lov = EU__EU.bestemmer.for.meget.i.forhold.til.dansk.lov,
             UDVIKLING__Ulandsbistanden.skal.sænkes = UDVIKLING__Ulandsbistanden.skal.sænkes,
+            MILJØ__Indsatsen.for.at.forbedre.miljøet.skal.gå.forud.for.økonomisk.vækst = MILJØ__Indsatsen.for.at.forbedre.miljøet.skal.gå.forud.for.økonomisk.vækst,
             KULTUR__Den.offentlige.kulturstøtte.skal.sænkes = KULTUR__Den.offentlige.kulturstøtte.skal.sænkes
             
-            )
-  
-  
-  
+           )
    
   
   
 # .. afslutningsvist eksporteres det nye datasæt til en .csv fil kaldet ft15_final:
 
   write.table(x = final, file = "dk_ft15_politician_responses.csv", fileEncoding = "UTF-8", sep = ",", row.names = FALSE)
-
-
