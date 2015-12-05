@@ -8,7 +8,10 @@ library("ggplot2")
 #### Load and format data ####
   
   data.org <- read.csv(file = "dk_ft15_politician_responses.csv", header = TRUE) #Load the raw dataset
-  data <- data.org #Load a "working" dataset
+  
+  data <- unique(data.org) # Load a "working" dataset, while removing duplicate entries
+  
+  
 
   ## Map responses to Likert-scale-style numeric
     for (i in 17:31){ 
@@ -19,11 +22,20 @@ library("ggplot2")
       gsub(x = ., pattern = "Delvist uenig", replacement = 2) %>% 
       gsub(x = ., pattern = "Helt uenig", replacement = 1) 
     }
+  
   for (i in 17:31){
     data[,i] <- as.numeric(data[,i])    #define as numeric
   }
   
-  ## Create mapping of response variables,
+  #Removing the double Kristian Andersen
+  
+#   data <- data %>%         # A candidate, Kristian Andersen, has several entries, these are removed. NOTE: This removes one candidate
+#           group_by(name) %>% 
+#           filter(row_number() == 1 ) %>% # Method: data is grouped on name variable, and groups with >1 name are discarded
+#           ungroup() 
+
+  
+    ## Create mapping of response variables,
   
 
         #    Use this to copy into code: -c(name, party, storkreds, lokalkreds, age, is.male,
@@ -165,7 +177,7 @@ library("ggplot2")
   
   
   #Pretty Plot#
-  data.pc = filter(data.pc, party!="1") #Filter away candidates outside the parties
+   # data.pc = filter(data.pc, party!="1") #Filter away candidates outside the parties
   
   p <- ggplot(data = data.pc, aes(x = data.pc[,32], y = data.pc[,33] )) +
     geom_point(aes(fill = party), colour = "black", alpha=0.8, shape = 21, size = 10) +
@@ -214,6 +226,67 @@ library("ggplot2")
   
   library("rpart.plot")
   prp(model, type = 4, extra = 2, nn = TRUE)
+  
+  
+  
+#### Distances between points #### ---------------------------  
+
+  # Construct matrix of Euclidean distances between all candidates, in all dimensions
+    
+    df.distance <- data[,17:31] 
+  
+    #Select only questions
+    rownames(df.distance) <- 1:nrow(df.distance) #Set names of rows
+    names(df.distance)[1:15] <- 1:15 #Simplify variable names
+    
+    #Compute distance matrix
+    dist.eucl <- dist(df.distance) %>% 
+                  as.matrix() %>% 
+                  as.data.frame()
+    
+    #Make a smaller matrix, containing only the distance to 30 nearest candidates, for each candidate
+    cand.dist <- data.frame() 
+    for (i in 1:ncol(dist.eucl)) {
+      cand.dist[1:30, i] <- sort(dist.eucl[,i])[1:30]
+    }
+    cand.dist.one <- t(cand.dist[2,])
+    
+    #Average distance to five nearest candidates
+    nearest.five.mean <- rep(0, ncol(dist.eucl))
+    for (i in 1:ncol(dist.eucl)) {
+      nearest.five.mean[i] <- mean(cand.dist[2:6,i])
+    }
+    
+    #Add distance measures to principal component dataframe
+    data.pc$nearest.cand <- as.numeric(cand.dist.one )
+    data.pc$nearest.five.mean <- nearest.five.mean
+    
+    
+    #Test plot of nearest candidates (note that distance is measured in many more dimensions than those plotted)
+    p <- ggplot(data = data.pc, aes(x = data.pc[,32], y = data.pc[,33] )) +
+      geom_point(aes(fill = nearest.cand), colour = "black", alpha=0.8, shape = 21, size = 10) +
+      scale_fill_continuous(low = "darkred", high = "green") +
+      theme_minimal()
+    p
+    
+    
+    #Test plot of mean distance to five nearest candidates (note that distance is measured in many more dimensions than those plotted)
+    p <- ggplot(data = data.pc, aes(x = data.pc[,32], y = data.pc[,33] )) +
+      geom_point(aes(fill = nearest.five.mean), colour = "black", alpha=0.8, shape = 21, size = 10) +
+      scale_fill_continuous(low = "darkred", high = "green") +
+      theme_minimal()
+    p
+    
+    
+    # THE MILLION DOLLAR PLOT (if it worked, but it doesn't)
+    p <- ggplot(data = filter(data.pc, votes.pers > 10 & nearest.five.mean >0), aes(x = nearest.five.mean, y = votes.pers )) +
+      geom_point() +
+      scale_y_log10() +
+      geom_smooth(method=lm, col = "red")+
+      # scale_fill_continuous(low = "darkred", high = "green") +
+      theme_minimal()
+    p
+
 
 
 #### TRASH #####  
@@ -228,5 +301,14 @@ library("ggplot2")
   
   rownames(resp.var) <- "Standard Deviation"
   
+  
+  #Explanation
+  # http://www.altinget.dk/kandidater/ft15/information.aspx#.VmNPf7xlmRs
+  
+#   Testens algoritme virker sådan, at der gives point på baggrund af forskellen mellem en kandidat
+#   og en brugers besvarelse. Et ens svar giver 4 point (f.eks. helt enig og helt enig), et trin ved
+#   siden af giver 3 point (f.eks. helt uenig og delvist uenig). Man får 0 point for svar i hver sin
+#   ende i skalaen (f.eks. helt enig og helt uenig). Hvert spørgsmål har en 1/20 vægt, og antallet af
+#   point bliver summeret til den endelig procentsats.
   
   
