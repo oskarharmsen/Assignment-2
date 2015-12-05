@@ -11,7 +11,7 @@ library("ggplot2")
   data <- data.org #Load a "working" dataset
 
   ## Map responses to Likert-scale-style numeric
-    for (i in 17:29){ 
+    for (i in 17:31){ 
       data[,i] <- data[,i] %>% 
       gsub(x = ., pattern = "Helt enig", replacement = 5) %>% 
       gsub(x = ., pattern = "Delvist enig", replacement = 4) %>% 
@@ -19,10 +19,19 @@ library("ggplot2")
       gsub(x = ., pattern = "Delvist uenig", replacement = 2) %>% 
       gsub(x = ., pattern = "Helt uenig", replacement = 1) 
     }
-  for (i in 5:19){
+  for (i in 17:31){
     data[,i] <- as.numeric(data[,i])    #define as numeric
   }
-            
+  
+  ## Create mapping of response variables,
+  
+
+        #    Use this to copy into code: -c(name, party, storkreds, lokalkreds, age, is.male,
+        #                                   title, location, elected, votes.pers, votes.all, valgt.nr,
+        #                                   stedfor.nr, opstillet.i.kreds.nr, nomineret.i.kreds.nr,
+        #                                   ran.last.election)
+  
+          
   ## Create colormapping to use for later plotting
   colormapping <- c(                    
                       "red",
@@ -69,7 +78,10 @@ library("ggplot2")
   party.means <- data %>% 
             filter(party != 1) %>% 
             group_by(party) %>%
-            summarize_each(funs(mean), -c(name, age, votes))
+            summarize_each(funs(mean), -c(name, party, storkreds, lokalkreds, age, is.male,
+                                          title, location, elected, votes.pers, votes.all, valgt.nr,
+                                          stedfor.nr, opstillet.i.kreds.nr, nomineret.i.kreds.nr,
+                                          ran.last.election))
 
   ## --- Plot average response to each question, by party --- #
   
@@ -122,7 +134,7 @@ library("ggplot2")
   
 ## --- How close are parties to the middle? --- ##  ----
   
-  #Calculate 'centerness'
+  #Calculate 'centerness' NOTE: Requires above code to have been run already, to create party.means
   party.middle <- party.means
   party.middle[,2:16] <- abs(party.middle[,2:16]-3)  #Re-align around center (defining center = 0) and take absolutes
   party.middle[,17] <- rowMeans(party.middle[,2:16]) #Compute averages
@@ -147,14 +159,15 @@ library("ggplot2")
   
   
 ### Principal Component Analysis ----
-  pc <- princomp(data[,5:19], cor=TRUE, scores=TRUE)
-  data[20:24] <- pc$scores[,1:5]
+  pc <- princomp(data[,17:31], cor=TRUE, scores=TRUE)
+  data.pc <- data
+  data.pc[32:36] <- pc$scores[,1:5]
   
   
   #Pretty Plot#
-  data2 = filter(data, party!="1") #Filter away candidates outside the parties
+  data.pc = filter(data.pc, party!="1") #Filter away candidates outside the parties
   
-  p <- ggplot(data = data2, aes(x = data2[,20], y = data2[,21] )) +
+  p <- ggplot(data = data.pc, aes(x = data.pc[,32], y = data.pc[,33] )) +
     geom_point(aes(fill = party), colour = "black", alpha=0.8, shape = 21, size = 10) +
     scale_fill_manual(values = colormapping) +
     theme_minimal()
@@ -162,9 +175,9 @@ library("ggplot2")
   
   
   #Faceted Party Plot#
-  data2 = filter(data) #Filter away candidates outside the parties
+  data.pc = filter(data) #Filter away candidates outside the parties
   
-  p <- ggplot(data = data2, aes(x = data2[,20], y = data2[,21], size = sqrt(votes/pi))) +
+  p <- ggplot(data = data.pc, aes(x = data.pc[,32], y = data.pc[,33], size = sqrt(votes.pers/pi))) +
     geom_point(aes(fill = party), colour = "black",
                alpha=0.8, shape = 21) +
     scale_size_continuous( range = c(1,25) ) +
@@ -178,7 +191,7 @@ library("ggplot2")
 
   
   library(ggfortify)
-  autoplot(prcomp(data[,5:19]), loadings = TRUE, loadings.colour = 'blue',
+  autoplot(prcomp(data[,17:31]), loadings = TRUE, loadings.colour = 'blue',
            loadings.label = TRUE, loadings.label.size = 3)
   
   
@@ -188,24 +201,26 @@ library("ggplot2")
   library(rpart)
   set.seed(1)
   
+  # separate into training and test data
   train <- sample( x = 1:nrow(data), size = 2/3 * nrow(data), replace = FALSE)
-  
   data.train <- data[train, ]
   data.test <- data[-train,]
   
+  # Fit decision tree
+  model = rpart(party ~ ., data = data.train[,c(2,17:31)], method = "class")
   
-  model = rpart(party ~ ., data = data.train[,c(3,5:19)], method = "class")
-  partychoice = predict(model, newdata = data.test[,c(3,5:19)], type = "class")
+  partychoice = predict(model, newdata = data.test[,c(2,17:31)], type = "class")
   summary(model)
   
   library("rpart.plot")
   prp(model, type = 4, extra = 2, nn = TRUE)
 
+
 #### TRASH #####  
   
   ## Variance in responses
   
-  resp.var <- data[,5:19] %>% 
+  resp.var <- data[,17:31] %>% 
     var() %>% 
     diag() %>% 
     sqrt() %>% 
@@ -213,13 +228,5 @@ library("ggplot2")
   
   rownames(resp.var) <- "Standard Deviation"
   
-  
-  
-  #Age plot
-  p <- ggplot(data = data, aes(x = data[,20], y = data[,21] )) +
-    geom_point(aes(color=age), size=10, alpha=0.5)+
-    scale_color_gradient(low="green", high = "red")+
-    theme_minimal()
-  p
   
   
