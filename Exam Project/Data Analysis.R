@@ -187,7 +187,7 @@ library("ggplot2")
   
   
   #Faceted Party Plot#
-  data.pc = filter(data) #Filter away candidates outside the parties
+  data.pc = filter(data.pc) #Filter away candidates outside the parties
   
   p <- ggplot(data = data.pc, aes(x = data.pc[,32], y = data.pc[,33], size = sqrt(votes.pers/pi))) +
     geom_point(aes(fill = party), colour = "black",
@@ -202,12 +202,11 @@ library("ggplot2")
   
 
   
-  library(ggfortify)
-  autoplot(prcomp(data[,17:31]), loadings = TRUE, loadings.colour = 'blue',
-           loadings.label = TRUE, loadings.label.size = 3)
-  
-  
-  
+#   library(ggfortify)
+#   autoplot(prcomp(data[,17:31]), loadings = TRUE, loadings.colour = 'blue',
+#            loadings.label = TRUE, loadings.label.size = 3)
+
+    
 #### Decision tree analysis ####
   
   library(rpart)
@@ -286,7 +285,75 @@ library("ggplot2")
       # scale_fill_continuous(low = "darkred", high = "green") +
       theme_minimal()
     p
+    
+    
+    
 
+#### Agreement between candidates, Altinget definition #### --------------------------------------------
+    
+    ### Construct matrix of agreement between all candidates ###
+        
+      # Import and transpose responses
+      df.distance <- t(data[,17:31])
+      
+      #Create empty matrix
+      cand.distance <- matrix(nrow = ncol(df.distance), ncol = ncol(df.distance))
+      
+      #Fill out matrix 
+      for (k in 1:nrow(cand.distance)){
+             for (i in 1:ncol(cand.distance)) {
+              cand.distance[k,i] <- sum((-abs(df.distance[,k] - df.distance[,i])+4) / 60) #Use Altingets definition of Agreement (see below)
+             }
+        print(k)
+      }  
+      
+      rm(df.distance)
+      
+    ###Average agreement with five nearest candidates
+      
+      #Create average 'agreement' with five closest candidate for each candidate
+      
+      agree.five.mean <- data.frame() #Empty frame
+      
+      for (i in 1:ncol(cand.distance)) {
+        agree.five.mean[1, i] <- sort(cand.distance[,i], decreasing = TRUE)[2:6] %>%  #Choose top 5 of each candidates agreement 
+                                 mean() # Take the mean
+      }
+      
+      agree.five.mean <- t(agree.five.mean) #transpose before merging with original data frame
+      
+      
+      
+    ### Test results in PCA plot
+    
+      #Add distance measures to principal component dataframe
+      data.pc$agree.five.mean <- as.numeric(agree.five.mean)
+      
+      ### Plot
+      
+      # Plot of mean agreement with five nearest candidates
+      p <- ggplot(data = data.pc, aes(x = data.pc[,32], y = data.pc[,33] )) +
+        geom_point(aes(fill = agree.five.mean), colour = "black", alpha=0.8, shape = 21, size = 10) +
+        scale_fill_continuous(low = "green", high = "red") +
+        theme(legend.position = "none") +
+        facet_wrap(~ party) +
+        theme_minimal()
+      p
+      
+      
+      # THE MILLION DOLLAR PLOT (if it worked, but it doesn't)
+      p <- ggplot(data = filter(data.pc, votes.pers > 10), aes(x = agree.five.mean, y = votes.pers )) +
+        geom_point() +
+        scale_y_log10() +
+        geom_smooth(method=lm, col = "red")+
+        theme_minimal()
+      p
+      
+      
+    
+  
+    
+    
 
 
 #### TRASH #####  
