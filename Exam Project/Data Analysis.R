@@ -351,9 +351,20 @@ library("ggplot2")
       
       
     
-  
-    
-    
+#### TO DO #####
+      
+#       - Build distance algorithm
+#         - within parties
+#         - within storkreds
+#         - within lokalkreds
+#       
+#       - Match valgkredsdata wwith
+#         - latitude, or
+#         - median income
+#         
+#       - Fix 
+#         - scales in facet wrapped plots: the horizontal axis is different for each plot
+#     
 
 
 #### TRASH #####  
@@ -377,5 +388,7 @@ library("ggplot2")
 #   siden af giver 3 point (f.eks. helt uenig og delvist uenig). Man får 0 point for svar i hver sin
 #   ende i skalaen (f.eks. helt enig og helt uenig). Hvert spørgsmål har en 1/20 vægt, og antallet af
 #   point bliver summeret til den endelig procentsats.
+  
+  
   
   
