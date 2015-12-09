@@ -401,13 +401,105 @@ library("ggplot2")
         #Load libraries
         library(reshape2)
         
+        #Melt dataframe to obtain a 'long' version of the above distance matrix
         melted.distance <- melt(data = cand.distance,
                                 id.vars = c(1,2,3,4),
                                 value.name = "agreement")
         
-        
+        #Add candidate info to both 'sides' of the list (such that info is attached to both names in every row)
+        cand.info <- cand.distance[,1:4]
+        melted.distance <- left_join(melted.distance, cand.info, by = c("variable" = "name"))
+        rm(cand.info)
         
 
+        ###Create distance measures
+        
+        #Average agreement with three nearest same party candidates within storkreds
+        distance.measure <- melted.distance %>% 
+                            filter(
+                                     storkreds.x == storkreds.y &      # Look only within same storkreds (for those with unknown lokalkreds)
+                                         party.x == party.y &          # Look only across parties
+                                           name != variable) %>%      # Technical: remove agreement with oneself
+                            group_by(name) %>% 
+                            arrange(desc(agreement)) %>% 
+                            filter( 1:n() == 1 | 1:n() == 2 | 1:n() == 3) %>%  #Select top three, with ties removed (always takes three)
+                            summarize(
+                              agree.three.mean.party.storkreds = mean(agreement)
+                            )
+        agree.three.mean.party.storkreds <- distance.measure
+        
+        
+        #Average agreement with three nearest non-same party candidates within storkreds
+        distance.measure <- melted.distance %>% 
+                            filter(
+                                    storkreds.x == storkreds.y &      # Look only within same storkreds (for those with unknown lokalkreds)
+                                        party.x != party.y &          # Look only across parties
+                                           name != variable) %>%      # Technical: remove agreement with oneself
+                            group_by(name) %>% 
+                            arrange(desc(agreement)) %>% 
+                            filter( 1:n() == 1 | 1:n() == 2 | 1:n() == 3) %>%  #Select top three, with ties removed (always takes three)
+                            summarize(
+                              agree.three.mean.oth.party.storkreds = mean(agreement)
+                            )
+        agree.three.mean.oth.party.storkreds <- distance.measure
+        
+        
+        ### Add to original dataframe
+        
+        #Add distance measures to principal component dataframe
+        data.pc <- left_join(data.pc, agree.three.mean.party.storkreds)
+        data.pc <- left_join(data.pc, agree.three.mean.oth.party.storkreds)
+        
+        ### Plot: DISTANCE TO OWN PARTY
+        
+        # Plot of mean agreement with five nearest candidates
+        p <- ggplot(data = data.pc, aes(x = data.pc[,32], y = data.pc[,33] )) +
+          geom_point(aes(fill = agree.three.mean.party.storkreds), colour = "black", alpha=0.8, shape = 21, size = 10) +
+          scale_fill_continuous(low = "green", high = "red") +
+          theme(legend.position = "none") +
+          #facet_wrap(~ party) +
+          theme_minimal()
+        p
+        
+        
+        # THE MILLION DOLLAR PLOT (if it worked, but it doesn't)
+        # - Regressing personal votes on average agreement with five nearest candidates
+        p <- ggplot(data = filter(data.pc, votes.pers > 10), aes(x = agree.three.mean.party.storkreds, y = votes.pers )) +
+          geom_point() +
+          scale_y_log10() +
+          geom_smooth(method=lm, col = "red")+
+          theme_minimal()
+        p
+        
+        
+        
+        ### Plot: DISTANCE TO OTHER PARTY
+        
+        # Plot of mean agreement with five nearest candidates
+        p <- ggplot(data = data.pc, aes(x = data.pc[,32], y = data.pc[,33] )) +
+          geom_point(aes(fill = agree.three.mean.oth.party.storkreds), colour = "black", alpha=0.8, shape = 21, size = 10) +
+          scale_fill_continuous(low = "green", high = "red") +
+          theme(legend.position = "none") +
+          #facet_wrap(~ party) +
+          theme_minimal()
+        p
+        
+        
+        # THE MILLION DOLLAR PLOT (if it worked, but it doesn't)
+        # - Regressing personal votes on average agreement with five nearest candidates
+        p <- ggplot(data = filter(data.pc, votes.pers > 10), aes(x = agree.three.mean.oth.party.storkreds, y = votes.pers )) +
+          geom_point() +
+          scale_y_log10() +
+          geom_smooth(method=lm, col = "red")+
+          theme_minimal()
+        p
+
+        
+#### -----------------------------------      
+        
+        
+        
+        
         
     
 #### TO DO #####
