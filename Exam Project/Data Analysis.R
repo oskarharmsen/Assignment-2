@@ -342,6 +342,7 @@ library("ggplot2")
       
       
       # THE MILLION DOLLAR PLOT (if it worked, but it doesn't)
+      # - Regressing personal votes on average agreement with five nearest candidates
       p <- ggplot(data = filter(data.pc, votes.pers > 10), aes(x = agree.five.mean, y = votes.pers )) +
         geom_point() +
         scale_y_log10() +
@@ -350,6 +351,64 @@ library("ggplot2")
       p
       
       
+      
+#### Agreement with other candidates, full melted data set  #### ---------------------------------------------------
+    
+      ### Goal: the dataset should look something like this #
+      
+        # Name1             name2           party        lokalkreds     storkreds     agreement   
+        # navn navnsen      esben lunde     venstre       xxx           xxxxx         88 %
+        # navn navnsen      lars løkke      venstre       xxx           xxxxx         58 %
+        # navn navnsen      pia K           venstre       xxx           xxxxx         42 %
+        # .....
+        # .....
+        # .....
+        # esben lunde      navn navnsen     o             xxx           xxxxx         88 %
+        # esben lunde      ...
+        # esben lunde      ...
+        # esben lunde      ...
+        
+      
+        # Step 1: Add names, party, lokalkreds and storkreds to the dataframe with full distances
+        # Step 2: Melt the dataframe
+        # Step 3: Compute the distance for each candidate to the wanted other candidates (party, kreds, etc.)
+        # Step 4: Add distance measures as a single variable to the original dataset
+        
+      
+    ### Step 1: Add names, party, lokalkreds and storkreds to the dataframe with full distances
+      
+        View(cand.distance)
+      
+        cand.distance <- cbind(data[,c(1,2,3,4)], cand.distance)
+      
+        # Work around the *Kristian Andersen* mistake: This should be checked, if Kristian Andersen is fixed.
+        
+        #Add names to rows
+        cand.distance[,1]    <- as.character(cand.distance[,1])
+        cand.distance[517,1] <- "Kristian Andersen_K1"
+        cand.distance[518,1] <- "Kristian Andersen_K2"
+        cand.distance[592,1] <- "Kristian Andersen_V1"
+        cand.distance[593,1] <- "Kristian Andersen_V2"
+        cand.distance[,1]    <- as.factor(cand.distance[,1])
+        
+        
+        cand.distance2 <- cand.distance
+        
+        #Put names on columns as well      
+        names(cand.distance)[5:728] <- as.character(cand.distance[,1])
+        
+        
+        #Load libraries
+        library(reshape2)
+        
+        melted.distance <- melt(data = cand.distance,
+                                id.vars = c(1,2,3,4),
+                                value.name = "agreement")
+        
+        
+        
+
+        
     
 #### TO DO #####
       
