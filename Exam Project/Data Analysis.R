@@ -185,6 +185,34 @@ library("ggplot2")
     theme_minimal()
   p
   
+## Let's try and divide the questions into two groups of questions: 
+  #redistribution and value-based policy questions
+  
+  #Splitting the dataset 
+  redist <- data %>% select (1:16,18:19,23:24,26,29,31)
+  value <- data %>% select (1:17, 20:22,25, 27:28,30)
+  
+  ##Do PCA analysis on both subsets and restore 5 first components
+  pc1 <- princomp(redist[,17:23], cor = T, scores = T)
+  redist[24:28] <- pc1$scores[,1:5]
+  pc2 <- princomp(value[,17:24], cor = T, scores = T)
+  value[25:29] <- pc2$scores[,1:5]
+  
+  ##Compute summary statistics on components
+  summary(princomp(redist[,17:23], loadings = T ))
+  summary(princomp(value[,17:24], loadings = T ))
+  
+  ##Add the first component from each subset to original data in order to plot in same plot
+  data.pc[37] <- pc1$scores[,1]
+  data.pc[38] <- pc2$scores[,1]
+  
+  ##The PCA - using first component from each subset analysis
+  p <- ggplot(data.pc, aes(x = data.pc[,37], y=data.pc[,38])) +
+    geom_point(aes(fill = party), colour = "black", alpha=0.8, shape = 21, size = 10) +
+    scale_fill_manual(values = colormapping) +
+    theme_minimal()
+  p
+  
   
   #Faceted Party Plot#
   data.pc = filter(data.pc) #Filter away candidates outside the parties
