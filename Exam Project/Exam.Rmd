@@ -1,0 +1,108 @@
+---
+title: "Voting advice applications, Political Spectrum and election outcomes - a data science approach"
+subtitle: "Exam Project, Social Data Science"
+author: "Group 8"
+date: "December 2015"
+output: html_document
+---
+
+### Abstract
+The project is explorative (covers a lot)
+
+We show:
+
+ * The Danish political spectrum does not perform according to typical Political Science theories, using dimensionality reduction
+ * ... party prediction ...
+ * Present and use a new method for testing election outcome impact of VAAs on a candidate-specific level, and find an indication that VAAs do not significantly impact election outcomes. Previous literature has relied mostly on survey or focus group methods. Our analysis would greatly improve with access to population responses, which has unfortunately not been available.
+
+### Introduction
+
+
+
+### Making sense of the data: descriptive statistics and static visualizations
+
+*Objective: provide an overview of the data*
+
+* Contents
+  + Danish parliamentary elections
+    + Political system
+    + Personlige stemmer, listestemmer, storkreds, lokalkredse
+
+  + **What is the main data?**
+    + VAA responses to 15 questions
+      + Questions span a wide range of political subjects
+      + Related to recent political events and discussions
+    + Developed by DR, Altinget, ...
+    + Answered by xx % of the Danish candidates
+    + What is it used for?
+      + Testing level of 'agreement' with candidates
+        + Write up the mathematical definition of agreement, and link to papers that discuss the impact of these measures
+    + Ethical considerations
+      + scraping data from online
+      + politicians and publicity
+      
+    
+  
+  + **Visualizations**
+    + Average party response, by question
+      + Provides a good overview, but may have too much and too detailed information, when 
+    
+    + Average party distance from the centre of the scale
+      + Can help provide an overview of what parties favor centrism
+      + (to be done: add )
+    
+    + Issue: How do you visualize a dataset that has 15 dimensions?
+
+
+### The political landscape: Theory and empirics
+
+*Objective: use VAA data to explore the Danish political spectrum, and examine how it relates to typical theories of political spectrums (reference to literature here)*
+
+
+* Presentation of political spectrum theory
+  + Based on two axis
+    + 
+    +
+  + Danish context
+  
+* Dimensionality reduction and Principal Component Analysis
+  + Theory - what does it do?
+  
+* Results
+  + Two axes
+    + Describing the political landscape
+    + labelling and interpreting the two axes -> what do we think they are?
+  + Third and fourth axes
+    
+  + How does it compare to standard descriptions of Danish political spectrum?
+    + Discussion: Is is is due to the questions being asked in the VAA?
+  
+  + Fitting the classical theories into the framework
+    + Results (PCA plot nummer to - fordelingspolitisk og )
+    + Discussion on correlation between different axes
+
+
+### The political landscape: Predicting party affiliation 
+
+
+
+### VAAs and Election outcomes: 
+
+
+#### Literature
+
+* Talonen, Sulkava (2011) Analyzing Parliamentary Elections Based on Voting Advice Application Data.
+* Ruusuvirta, O. & Rosema, M. (2009). Do online vote selectors influence electoral participation and the direction of the vote?
+* Slothuus, Rune, et al. Måling af politiske værdier og informationsbearbejdning. Nye indeks for fordelingspolitik, værdipolitik og "Need to Evaluate" blandt danske vælgere. Working paper. Department of Political Science and Government, University of Aarhus, Denmark, 2010.
+
+
+
+### Appendix
+
+#### Data scraping
+
+ * Methods and issues?
+  + VAA Responses
+  + Background information on politicians
+  
+ * Replicability
