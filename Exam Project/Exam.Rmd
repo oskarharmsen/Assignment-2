@@ -6,13 +6,23 @@ date: "December 2015"
 output: html_document
 ---
 
+# To Do
+
+* Omvend 'ran.last.election'
+* Fjern Kristian Andersen
+* Scrape bedre baggrundsdata (fra DR, fx)
+* 
+
+
+
+
 ### Abstract
 The project is explorative (covers a lot)
 
 We show:
 
  * The Danish political spectrum does not perform according to typical Political Science theories, using dimensionality reduction
- * ... party prediction ...
+ * ... party prediction ... 
  * Present and use a new method for testing election outcome impact of VAAs on a candidate-specific level, and find an indication that VAAs do not significantly impact election outcomes. Previous literature has relied mostly on survey or focus group methods. Our analysis would greatly improve with access to population responses, which has unfortunately not been available.
 
 ### Introduction
@@ -24,12 +34,12 @@ We show:
 *Objective: provide an overview of the data*
 
 * Contents
-  + Danish parliamentary elections
+  + **Danish parliamentary elections**
     + Political system
     + Personlige stemmer, listestemmer, storkreds, lokalkredse
 
   + **What is the main data?**
-    + VAA responses to 15 questions
+    + VAA responses to 15 questions (true / stated preference)
       + Questions span a wide range of political subjects
       + Related to recent political events and discussions
     + Developed by DR, Altinget, ...
@@ -40,18 +50,17 @@ We show:
     + Ethical considerations
       + scraping data from online
       + politicians and publicity
-      
-      
-      
     
   
-  + **Visualizations**
+  + **Descriptive statistics**
     + Average party response, by question
       + Provides a good overview, but may have too much and too detailed information, when 
     
     + Average party distance from the centre of the scale
       + Can help provide an overview of what parties favor centrism
       + (to be done: add )
+    
+    + Variance in responses within parties
     
     + Issue: How do you visualize a dataset that has 15 dimensions?
 
@@ -114,6 +123,7 @@ We show:
   +  
   + Could have added,
     + position on voting list
+    + elected, instead of personal votes
 
 
 
