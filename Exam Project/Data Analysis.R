@@ -523,9 +523,25 @@ library("ggplot2")
         p
 
         
-#### -----------------------------------      
+#### -------- Regression analysis -------------------
         
+        names(data.pc)
         
+        #data.pc$opstillet.i.kreds.nr <- as.numeric(data.pc$opstillet.i.kreds.nr)
+        
+        lm1 <- lm(formula = votes.pers ~ 
+                    agree.three.mean.party.storkreds + 
+     #               agree.three.mean.party.storkreds*party +
+      #              party +
+                   opstillet.i.kreds.nr +
+                    is.male +
+                    ran.last.election,
+                  data = data.pc)
+        summary(lm1)
+        
+        View(data.pc )
+        
+        lm()
         
         
         

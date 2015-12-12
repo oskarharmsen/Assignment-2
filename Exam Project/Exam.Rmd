@@ -41,6 +41,8 @@ We show:
       + scraping data from online
       + politicians and publicity
       
+      
+      
     
   
   + **Visualizations**
@@ -78,7 +80,7 @@ We show:
     + Discussion: Is is is due to the questions being asked in the VAA?
   
   + Fitting the classical theories into the framework
-    + Results (PCA plot nummer to - fordelingspolitisk og )
+    + Results (PCA plot nummer to - fordelingspolitisk og værdipolitisk akse)
     + Discussion on correlation between different axes
 
 
@@ -87,6 +89,32 @@ We show:
 
 
 ### VAAs and Election outcomes: 
+
+*Objective: to provide a new test for VAA impact on election outcomes at a candidate level.*
+
+* Hypothesis:
+  + Having a distinct opinion will imply larger 
+    + If voter preferences have a fair spread within the party affiliation boundaries, and voters are prone to vote for those candidates with whom they agree the most in the VAA, then candidates who have a larger range of responses 'to themselves', should obtain more personal votes.
+    + Assumptions: [...]
+    
+* Model
+  + Distinction: VAA definition of agreement.
+    + Literature critique of this.
+    + Relation to PCA.
+      + Difficulty of plotting.
+  + Relevant level of comparison
+    + Lokalkreds, storkreds [put in footnote, results when ]
+
+
+* Data
+  + Added demographic data, and
+  + VAA responses do not exist for all candidates. Any relation here?
+  
+* Results
+  +  
+  + Could have added,
+    + position on voting list
+
 
 
 #### Literature
