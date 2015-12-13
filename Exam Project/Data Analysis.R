@@ -243,16 +243,21 @@ library("ggplot2")
   # separate into training and test data
   train <- sample( x = 1:nrow(data), size = 2/3 * nrow(data), replace = FALSE)
   data.train <- data[train, ]
+  data.train <- data.train[,c(2,17:31)]
+  names(data.train) = c("party","uddannelse","forebyggelse","sundhed","velfÃ¦rd","arbejdsmarked1","arbejdsmarked2","Ã¸konomi","trafik","ret","social","integration","eu","udvikling","miljÃ¸","kultur")
   data.test <- data[-train,]
+  data.test <- data.test[,c(2,17:31)]
+  names(data.test) = c("party","uddannelse","forebyggelse","sundhed","velfÃ¦rd","arbejdsmarked1","arbejdsmarked2","Ã¸konomi","trafik","ret","social","integration","eu","udvikling","miljÃ¸","kultur")
   
   # Fit decision tree
-  model = rpart(party ~ ., data = data.train[,c(2,17:31)], method = "class")
+  model = rpart(party ~ ., data = data.train, method = "class")
   
-  partychoice = predict(model, newdata = data.test[,c(2,17:31)], type = "class")
-  summary(model)
-  
+  partychoice = predict(model, newdata = data.test, type = "class")
+
+  # plot the model
   library("rpart.plot")
-  prp(model, type = 4, extra = 2, nn = TRUE)
+  prp(model, extra = 8,  box.col = "lightblue", border.col = "darkblue", shadow.col = "lightgrey", split.cex = 0.7,split.font = 4, split.col = "darkblue", split.border.col = 9, split.shadow.col = "lightgrey", nn.col = "darkred")
+  
   
   
   
@@ -386,7 +391,7 @@ library("ggplot2")
       
         # Name1             name2           party        lokalkreds     storkreds     agreement   
         # navn navnsen      esben lunde     venstre       xxx           xxxxx         88 %
-        # navn navnsen      lars løkke      venstre       xxx           xxxxx         58 %
+        # navn navnsen      lars l?kke      venstre       xxx           xxxxx         58 %
         # navn navnsen      pia K           venstre       xxx           xxxxx         42 %
         # .....
         # .....
@@ -562,10 +567,10 @@ library("ggplot2")
   #Explanation
   # http://www.altinget.dk/kandidater/ft15/information.aspx#.VmNPf7xlmRs
   
-#   Testens algoritme virker sådan, at der gives point på baggrund af forskellen mellem en kandidat
+#   Testens algoritme virker s?dan, at der gives point p? baggrund af forskellen mellem en kandidat
 #   og en brugers besvarelse. Et ens svar giver 4 point (f.eks. helt enig og helt enig), et trin ved
-#   siden af giver 3 point (f.eks. helt uenig og delvist uenig). Man får 0 point for svar i hver sin
-#   ende i skalaen (f.eks. helt enig og helt uenig). Hvert spørgsmål har en 1/20 vægt, og antallet af
+#   siden af giver 3 point (f.eks. helt uenig og delvist uenig). Man f?r 0 point for svar i hver sin
+#   ende i skalaen (f.eks. helt enig og helt uenig). Hvert sp?rgsm?l har en 1/20 v?gt, og antallet af
 #   point bliver summeret til den endelig procentsats.
   
   
