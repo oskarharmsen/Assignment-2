@@ -285,10 +285,10 @@ p
   train <- sample( x = 1:nrow(data), size = 2/3 * nrow(data), replace = FALSE)
   data.train <- data[train, ]
   data.train <- data.train[,c(2,17:31)]
-  names(data.train) = c("party","uddannelse","forebyggelse","sundhed","velfærd","arbejdsmarked1","arbejdsmarked2","økonomi","trafik","ret","social","integration","eu","udvikling","miljø","kultur")
+  names(data.train) = c("party","uddannelse","forebyggelse","sundhed","velfærd","arb1","arb2","økonomi","trafik","ret","social","integration","eu","udvikling","miljø","kultur")
   data.test <- data[-train,]
   data.test <- data.test[,c(2,17:31)]
-  names(data.test) = c("party","uddannelse","forebyggelse","sundhed","velfærd","arbejdsmarked1","arbejdsmarked2","økonomi","trafik","ret","social","integration","eu","udvikling","miljø","kultur")
+  names(data.test) = c("party","uddannelse","forebyggelse","sundhed","velfærd","arb1","arb2","økonomi","trafik","ret","social","integration","eu","udvikling","miljø","kultur")
   
   # Fit decision tree
   model = rpart(party ~ ., data = data.train, method = "class")
@@ -297,7 +297,7 @@ p
 
   # plot the model
   library("rpart.plot")
-  prp(model, extra = 8,  box.col = "lightblue", border.col = "darkblue", shadow.col = "lightgrey", split.cex = 0.7,split.font = 4, split.col = "darkblue", split.border.col = 9, split.shadow.col = "lightgrey", nn.col = "darkred")
+  prp(model,   box.col = "lightblue", border.col = "darkblue", shadow.col = "lightgrey", split.cex = 0.7,split.font = 4, split.col = "darkblue", split.border.col = 9, split.shadow.col = "lightgrey", nn.col = "darkred")
   
   
   # variable importance
@@ -307,7 +307,7 @@ p
   # run the model on the whole dataset
   
   data.pred <- data[,c(2,17:31)]
-  names(data.pred) <- c("party","uddannelse","forebyggelse","sundhed","velfærd","arbejdsmarked1","arbejdsmarked2","økonomi","trafik","ret","social","integration","eu","udvikling","miljø","kultur")
+  names(data.pred) <- c("party","uddannelse","forebyggelse","sundhed","velfærd","arb1","arb2","økonomi","trafik","ret","social","integration","eu","udvikling","miljø","kultur")
 
   pred = data.frame(predict(model, newdata = data.pred, type = "class"))
   
