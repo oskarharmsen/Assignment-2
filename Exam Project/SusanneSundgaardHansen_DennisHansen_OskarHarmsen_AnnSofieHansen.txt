@@ -1,0 +1,1274 @@
+
+# project title: Voting advice applications, political spectrum and election outcomes - a data science approach
+# authors: Susanne Sundgaard Hansen, Oskar Harmsen, Dennis Hansen, Ann-Sofie Hansen
+# groupnumber: 8
+# course: Social Data Science
+# date: 14. december 2015
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+                                          #### Script settings and package loadings ####
+
+  # settings:
+  
+  Sys.setlocale(category = "LC_ALL", locale = "UTF-8")
+
+  # loading packages:
+
+  library("plyr")
+  library("rvest")
+  library("dplyr")
+  library("ggplot2")
+  library("readr")
+  library("XML")
+  library("stringr")
+  library("httr")
+  library("rpart")
+  library("rpart.plot")
+  library("reshape2")
+  library("stargazer")
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+                                        #### Scraping: VAA data from Danmarks Radio ####
+
+
+## Obtain list of links to particular candidates
+
+## Step 1.1: Obtain links to valgsteder ##
+
+valgsteder.page <- "http://www.dr.dk/nyheder/politik/valg2015/se-din-stemmeseddel#skift-valgsted"
+
+valgsteder.link = read_html(valgsteder.page, encoding = "UTF-8") %>% 
+  html_nodes(css = ".heading-xxsmall")  %>%
+  html_attr(name = 'href')
+valgsteder.link <- as.data.frame(valgsteder.link)
+valgsteder.link$valgsteder.link <- paste("http://www.dr.dk", valgsteder.link$valgsteder.link, sep="")
+
+## Step 2.1: Obtain links to candidates at each valgsted ##
+#Step 2.1: Create function
+valgsted.kand = function(valgsted) {
+  data <- read_html(valgsted, encoding = "UTF-8")
+  kand.link <-  data %>% 
+    html_nodes(css = ".collaps-items .heading-xsmall") %>% 
+    html_attr(name = 'href')
+  return(kand.link)
+}
+
+## Step 2.2: Apply function for each valgsted ##
+
+  #Get raw list
+kand.link <- list()
+for (i in 1:nrow(valgsteder.link)) {
+  kand.link[[i]] <- valgsted.kand(valgsteder.link[i,]) 
+  print(paste(i, "of", nrow(valgsteder.link)))
+}
+
+  #clean duplicate entries
+kand.link <- unique(unlist(kand.link))
+kand.link <- paste("http://www.dr.dk", kand.link, sep = "")
+
+## Step 3.1: Get info on each candidate ##
+
+  #Build function to extract information
+kand.info = function(link){
+  #Read link
+  data2 <- read_html(link, encoding = "UTF-8")
+  
+  #Fetch name
+  name <- data2 %>%
+    html_nodes(".heading-large") %>% 
+    html_text()
+  
+  #Fetch Party
+  party <- data2 %>%
+    html_nodes(".large") %>% 
+    html_attrs() %>% 
+    gsub(x = ., pattern = "letter-color party-", replacement = "") %>% 
+    gsub(x = ., pattern = "large", replacement = "") %>% 
+    str_trim()
+  
+  #Fetch Alder
+  age <- data2 %>%
+    html_nodes(".fact-item:nth-child(1) .fact-item-text") %>% 
+    html_text() %>%
+    gsub(x = ., pattern = "?r", replacement = "") %>% 
+    str_trim() %>% 
+    as.numeric()
+  
+  #Fetch votes
+  votes <- data2 %>%
+    html_nodes(".votes > .pv-votes-count-candidate-page") %>% 
+    html_text() %>%
+    as.numeric()
+  
+  #Fetch responses
+  responses <- data2 %>%
+    html_nodes(".heading-xxxsmall") %>% 
+    html_text() %>%
+    unlist() %>% 
+    rbind()
+  
+  #Collect output
+  return(cbind(name, age, party, votes, responses))
+  
+}
+
+  #Loop over candidates
+loop.length <- length(kand.link)
+df = list()
+for (i in 1:loop.length){
+  df[[i]] <- kand.info(kand.link[i])
+  print(paste(i, "of", loop.length))
+}
+
+
+## Step 4.1: Clean ##
+
+  #Remove candidates without responses
+df2 = list()
+for (i in 1:loop.length) {
+  if(length(df[[i]]==33)){
+    df2[[i]] <- df[[i]]
+  }else{
+  }
+}
+
+
+  #Order into dataframe
+df2 <- as.data.frame(matrix(df))
+df2[,1:34] <- str_trim(str_split_fixed(df2[,1], ",", 34)) #Split several options into different rows
+
+  #Clean
+for(i in 1:34){
+  df2[,i] <- gsub(x = df2[,i], pattern = "\"", replacement = "")  
+}        
+df2[,1] <- gsub(x = df2[,1], pattern = "+[c]\\(", replacement = "")  
+df2 <-  df2 %>% 
+  filter(V5!="") %>%  #Remove observations without responses
+  select(-(0:14*2+6))
+df2$age <- as.numeric(df2$age)
+df2$votes <- as.numeric(df2$votes)
+for(i in c(3, 5:19)){
+  df2[,i] <- as.factor(df2[,i])
+}
+df2 <- filter(df2, df2[,19]!="")
+
+
+  #Get questions downloaded
+data <- read_html(kand.link[2], encoding = "UFT-8")
+data2 <- data %>% html_nodes(".quest") %>% 
+  html_text() %>% 
+  str_trim() %>% 
+  gsub(x = ., pattern = "       ", replacement = "") %>% 
+  gsub(x = ., pattern = "[\r\n]", replacement = "_")
+names(df2)=c("name", "age", "party", "votes", data2)
+
+  #Rename
+data <- df2
+
+write.table(x = data, file = "dk_ft15_politician_responses.csv", fileEncoding = "UTF-8", sep = ",", row.names = FALSE)
+
+
+
+
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+                  #### Scraping and merging : general candidate data from www.folketingsvalg-2015.dk and VAA merge ####
+
+
+
+##  Step1: Scrape data form folketingsvalg-2015.dk ##
+
+  # First of all, we want to scrape every candidate name from http://www.folketingsvalg-2015.dk
+  # To do that, we have to loop through every party name and then create links to scrape from:
+
+partier <- data.frame(c("alternativet","venstre","socialdemokraterne","dansk folkeparti","radikale venstre",
+                        "socialistisk folkeparti", "enhedslisten", "liberal alliance", 
+                        "det konservative folkeparti", "kristendemokraterne", "uden for folketingsgrupperne")) 
+names(partier) = c("parti")
+
+  # Creating links to http://www.folketingsvalg-2015.dk for the parties:
+partier = partier %>%
+  mutate(link = str_replace_all(parti, "[[:space:]]", "-")) %>%
+  mutate(link = paste0("http://www.folketingsvalg-2015.dk/parti/",link))
+
+  # Now loop through the links just created and scrape candidate names:
+
+kandidater.ft15 <- data.frame()
+
+for( i in 1:nrow(partier)){
+  
+  ft   <- partier[i,2]
+  link <- html(ft)
+  
+  kandidat <- link %>%
+    html_nodes(".simplelist p a") %>%
+    html_text() %>%
+    data.frame() %>%
+    mutate(parti = partier[i,1])
+  
+  kandidater.ft15 <- rbind(kandidater.ft15, kandidat)
+  
+  Sys.sleep(0.5)
+}  
+
+names(kandidater.ft15) = c("navn","parti")
+
+# Next, we have to generate a link from the names to further scrape information about
+# the individual candidates.
+
+# 1. making the links:
+
+kandidater.ft15 <- kandidater.ft15 %>%
+  mutate(link = str_replace_all(navn,"[[:space:]]","-")) %>%
+  mutate(link = str_replace_all(link, "\\.","")) %>%
+  mutate(link = paste0("http://www.folketingsvalg-2015.dk/",link)) %>%
+  mutate(link = str_replace_all(link, "ø","o")) %>%
+  mutate(link = str_replace_all(link, "æ","ae")) %>%
+  mutate(link = str_replace_all(link, "Ø","o")) 
+
+rm(partier, kandidat) #remove unused variables
+
+
+# 2. scrape individual candidate data:
+
+kandidat.data <- data.frame()
+
+for(i in 1:nrow(kandidater.ft15)){
+  
+  ft   <- kandidater.ft15[i,3]
+  link <- html(ft)
+  
+  storkreds = link  %>%
+    html_nodes(".center p:nth-child(1) a") %>%
+    html_text()
+  
+  lokalkreds = link %>%
+    html_nodes(".center p:nth-child(2)")   %>%
+    html_text()
+  
+  alder = link %>% 
+    html_nodes(".center p:nth-child(3)")   %>%
+    html_text()
+  
+  titel = link %>% 
+    html_nodes(".center p:nth-child(4)")   %>%
+    html_text()
+  
+  bopæl = link %>% 
+    html_nodes(".center p:nth-child(5)")   %>%
+    html_text()
+  
+  køn = link   %>% 
+    html_nodes(".center p:nth-child(6)")   %>%
+    html_text()
+  
+  opstillet_sidste_valg = link %>% 
+    html_nodes(".center p:nth-child(7)")   %>%
+    html_text()
+  
+  buffer = link %>%
+    html_nodes("p:nth-child(8)")           %>%
+    html_text
+  
+  navn  <- as.character(kandidater.ft15[i,1])
+  parti <- as.character(kandidater.ft15[i,2])
+  
+  k <- data.frame(cbind(navn, parti,storkreds, lokalkreds, alder, titel, bopæl, køn, opstillet_sidste_valg, buffer))
+  
+  kandidat.data <- data.frame(rbind(kandidat.data, k))
+  
+  print(paste(i, "of", nrow(kandidater.ft15), "completed.", sep = " ")) #Keep track of progress
+  
+}
+
+  # 3. for some of the rows the variables os not in the correct column due to asymmetry where some candidates 
+  # has a variable containing the position on the actual election list (for example row # 152). Those rows 
+  # has to be identified and correctet:
+
+
+kandidat.data   = kandidat.data %>%
+  mutate(indi   = ifelse(grepl("Opstillet" , buffer) == TRUE , 1, 0))           %>%
+  mutate(alder  = ifelse(indi == 1,  as.character(titel), as.character(alder))) %>%
+  mutate(titel  = ifelse(indi == 1,  as.character(bopæl), as.character(titel))) %>%
+  mutate(bopæl  = ifelse(indi == 1,  as.character(køn), as.character(bopæl)))   %>%
+  mutate(køn    = ifelse(indi == 1,  as.character(opstillet_sidste_valg), as.character(køn)))   %>%
+  mutate(opstillet_sidste_valg = ifelse(indi == 1,  as.character(buffer), as.character(opstillet_sidste_valg))) %>%
+  select(-(buffer:indi))
+
+
+
+# 4. do a generel data cleaning of the data:
+
+kandidat.data <- kandidat.data %>%
+  mutate(storkreds             = str_replace_all(storkreds,"storkreds",""))     %>%
+  mutate(lokalkreds            = str_replace_all(lokalkreds,"Lokalkredse:","")) %>%
+  mutate(alder                 = str_replace_all(alder,"Alder:",""))            %>%
+  mutate(titel                 = str_replace_all(titel,"Titel:",""))            %>%
+  mutate(bopæl                 = str_replace_all(bopæl,"Bopæl:",""))            %>%
+  mutate(køn                   = str_replace_all(køn,"Køn:",""))                %>%
+  mutate(navn                  = str_replace_all(navn,"aa","å"))                %>%
+  mutate(opstillet_sidste_valg = str_replace_all(opstillet_sidste_valg,"Opstillet ved sidste valg:","")) 
+
+# 5. merging with the original data:
+
+raw <- read_csv("dk_ft15_politician_responses_DR_DATA_ONLY.csv")
+
+  # .. first, the names of the party should be full lenght instead of letter (for merging comparison reasons)    
+raw = raw %>%
+  mutate(party = ifelse(party == "aa", "alternativet", as.character(party)))                 %>%
+  mutate(party = ifelse(party == "v" , "venstre", as.character(party)))                      %>%
+  mutate(party = ifelse(party == "a" , "socialdemokraterne", as.character(party)))           %>%
+  mutate(party = ifelse(party == "o" , "dansk folkeparti", as.character(party)))             %>%
+  mutate(party = ifelse(party == "b" , "radikale venstre", as.character(party)))             %>%
+  mutate(party = ifelse(party == "f" , "socialistisk folkeparti", as.character(party)))      %>%
+  mutate(party = ifelse(party == "oe", "enhedslisten", as.character(party)))                 %>%
+  mutate(party = ifelse(party == "i" , "liberal alliance", as.character(party)))             %>%
+  mutate(party = ifelse(party == "c" , "det konservative folkeparti", as.character(party)))  %>%
+  mutate(party = ifelse(party == "k" , "kristendemokraterne", as.character(party)))          %>%
+  mutate(party = ifelse(party ==  1  , "uden for folketingsgrupperne", as.character(party))) %>%
+  mutate(name = str_replace_all(name, "aa","å"))
+
+  # .. manual corrections of some of the names. Those ones got identified in the next loop and could not 
+  # be matched due to incorrect spelling in most cases. 
+
+kandidat.data$navn[361] = "Søren Burcharth"
+kandidat.data$navn[629] = "Anne-Marie Tørnes Hansen"
+kandidat.data$navn[378] = "Henriette Bødevadt"
+kandidat.data$navn[38]  = "Tanja Schjellerup"
+kandidat.data$navn[663] = "Anette Bolvig"
+kandidat.data$navn[363] = "Giajenthiran Velmurugan"
+
+
+names(raw)[1] <- "navn"
+
+  # .. merging of the VAA and candidate data (those observation that can compared in terms of name): 
+
+merge_raw  = left_join(raw,kandidat.data, by = "navn") 
+
+  # .. introducing a new variable called ID for both datasets. This should establish i way to identify 
+  # the candidates in the later code.
+
+
+id.k = seq(1,nrow(kandidat.data))
+kandidat.data = mutate(kandidat.data, id.k = id.k)
+
+id.r = seq(1,nrow(merge_raw))
+merge_raw = mutate(merge_raw, id.r = id.r)
+
+  # .. because the names in the VAA and candidate data is not always the same (even though it's the same candidate,
+  # but different use of middle name ect.) not every rows is merged correctly. Fist, we identify those:
+
+skalrettes = filter(merge_raw, is.na(parti) == TRUE) 
+
+  # .. the following code chunk will go through "skalrettes" just created and try to connect these names with the ones
+  # in the candidate data. The code will identify it as a match IF the first name, sir name and pary is the same in the two 
+  # dataset OR IF the firstname, middle name and party is the same. If there is a match, the variables from the candidate 
+  # data will be copied into the missing values in the merged data for the matched candidate (here we use the ID created before)
+
+fejl = c()
+for(i in 1:nrow(skalrettes)){
+  
+  # first, a filter is made on the data to be searched by the relevant party. In that way, we 
+  # limit the size of the loop each time.
+  
+  parti.filter = skalrettes$party[i]  
+  data.filter = filter(kandidat.data, parti == parti.filter ) 
+  
+  # thereafter we note the ID's
+  opdel = skalrettes$navn[i]
+  id.r  = skalrettes$id.r[i]
+  
+  # now we loop through the narrowed seach data and look for the criterias described above, 
+  # and copy in the observation in merge_raw for the matched candidates. If the code can't find 
+  # a match, it will output the rownumber to a vector. By looking at the vector we could identidy
+  # the candidates that could not be matched due to spelling errors ect. (which is correctet above).
+  
+  k = "ikke fundet"
+  for(j in 1:nrow(data.filter)){
+    
+    tjek = str_split(data.filter$navn[j],"[[:space:]]") 
+    tjek = c(do.call("cbind",tjek))
+    n = length(tjek)
+    
+    if(grepl(tjek[1], opdel) == T & grepl(tjek[n], opdel) == T | grepl(tjek[1], opdel) == T & grepl(tjek[2], opdel) ){
+      k = "fundet"
+      merge_raw$parti[id.r] = data.filter$parti[j]
+      merge_raw$storkreds[id.r] = data.filter$storkreds[j]  
+      merge_raw$lokalkreds[id.r] = data.filter$lokal[j] 
+      merge_raw$alder[id.r] = data.filter$alder[j]
+      merge_raw$køn[id.r] = data.filter$køn[j] 
+      merge_raw$bopæl[id.r] = data.filter$bopæl[j] 
+      merge_raw$titel[id.r] = data.filter$titel[j] 
+      merge_raw$id.k[id.r] = data.filter$id.k[j]
+      merge_raw$opstillet_sidste_valg[id.r] = data.filter$opstillet_sidste_valg[j]
+      # merge_raw$opstillet_sidste_valg[id.r] = data.filter$opstillet_sidste_valg[j] 
+      
+    } else if (j == nrow(data.filter) & k != "fundet") {
+      fejl = append(fejl, i )
+    }
+  }
+} 
+
+  # .. two observations are accouring more than once, and since they can't be corrected be the code, we have the exclude them manually.  
+merge_final = merge_raw[-611,]
+merge_final = merge_final[-702,]
+
+  # .. selection of variables:
+
+merge_final = select(merge_final, -id.r, -id.k, -alder, -buffer)
+
+merge_final = merge_final %>% 
+  select(
+    name = navn,
+    party = party,
+    storkreds = storkreds,
+    lokalkreds = lokalkreds,
+    ran.last.election = opstillet_sidste_valg,
+    age = age,
+    sex = køn,
+    title = titel,
+    location = bopæl,
+    pers.votes = votes, 
+    `UDDANNELSE__Efter folkeskolereformen får eleverne for lange skoledage` = `UDDANNELSE__Efter folkeskolereformen får eleverne for lange skoledage`,
+    `FOREBYGGELSE__Afgiften på cigaretter skal sættes op` = `FOREBYGGELSE__Afgiften på cigaretter skal sættes op`,
+    `SUNDHED__Et besøg hos den praktiserende læge skal koste eksempelvis 100 kr.` = `SUNDHED__Et besøg hos den praktiserende læge skal koste eksempelvis 100 kr.`,
+    `VELFÆRD__Mere af ældreplejen skal udliciteres til private virksomheder` = `VELFÆRD__Mere af ældreplejen skal udliciteres til private virksomheder`,
+    `ARBEJDSMARKED__Man skal hurtigere kunne genoptjene retten til dagpenge` = `ARBEJDSMARKED__Man skal hurtigere kunne genoptjene retten til dagpenge`,
+    `ARBEJDSMARKED__Virksomheder skal kunne drages til ansvar for, om deres udenlandske underleverandører i Danmark overholder danske regler om løn, moms og skat` = `ARBEJDSMARKED__Virksomheder skal kunne drages til ansvar for, om deres udenlandske underleverandører i Danmark overholder danske regler om løn, moms og skat`,
+    `ØKONOMI__Vækst i den offentlige sektor er vigtigere end skattelettelser` = `ØKONOMI__Vækst i den offentlige sektor er vigtigere end skattelettelser`,
+    `TRAFIK__Investeringer i kollektiv trafik skal prioriteres højere end investeringer til fordel for privatbilisme` = `TRAFIK__Investeringer i kollektiv trafik skal prioriteres højere end investeringer til fordel for privatbilisme`,
+    `RET__Straffen for grov vold og voldtægt skal skærpes` = `RET__Straffen for grov vold og voldtægt skal skærpes`,
+    `SOCIAL__Kontanthjælpen skal sænkes, så den økonomiske gevinst ved at arbejde bliver større` = `SOCIAL__Kontanthjælpen skal sænkes, så den økonomiske gevinst ved at arbejde bliver større`,
+    `INTEGRATION__Offentlige institutioner i Danmark tager for mange hensyn til religiøse minoriteter` = `INTEGRATION__Offentlige institutioner i Danmark tager for mange hensyn til religiøse minoriteter`,
+    `EU__EU bestemmer for meget i forhold til dansk lov` = `EU__EU bestemmer for meget i forhold til dansk lov`,
+    `UDVIKLING__Ulandsbistanden skal sænkes` = `UDVIKLING__Ulandsbistanden skal sænkes`,
+    `MILJØ__Indsatsen for at forbedre miljøet skal gå forud for økonomisk vækst` = `MILJØ__Indsatsen for at forbedre miljøet skal gå forud for økonomisk vækst`,
+    `KULTUR__Den offentlige kulturstøtte skal sænkes` = `KULTUR__Den offentlige kulturstøtte skal sænkes`
+  )
+
+
+  #Export work in progress data set
+write.table(x = merge_final, file = "dk_ft15_politician_responses_withoutDST.csv", fileEncoding = "UTF-8", sep = ",", row.names = FALSE)
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+                                           #### Scraping and merging: Election data from DST ####
+
+
+
+rm( list = ls() ) #Clear work space
+
+url <- "https://www.dst.dk/valg/Valg1487635/kandstat/kandstat.htm"
+tabs <- GET(url, encoding = "UTF-8")
+tabs <- readHTMLTable(rawToChar(tabs$content), stringsAsFactors = F, header = TRUE)
+
+tabs <- tabs[4]
+dst <- data.frame(matrix(unlist(tabs), nrow=962, ncol=7), stringsAsFactors = F)
+dst <- dst[(4:962),]
+names(dst) <- c("name", "opstillet.i.kreds.nr", "nomineret.i.kreds.nr", "stemmer.i.alt", "stemmer.pers", "valgt.nr", "stedfor.nr")
+dst <- dst %>%
+  filter(!is.na(dst$opstillet.i.kreds.nr))
+
+dst[636:724,]$nomineret.i.kreds.nr <- str_extract(dst[636:724,]$name, "[0-9]{1,3}. ")
+
+dst$nomineret.i.kreds.nr <-gsub("\\.","",dst$nomineret.i.kreds.nr)
+dst$stemmer.pers<-gsub("\\.","", dst$stemmer.pers)
+dst$stemmer.i.alt<-gsub("\\.","", dst$stemmer.i.alt)
+dst$valgt.nr<-gsub(" ","", dst$valgt.nr)
+dst$name<-gsub("[0-9]{1,3}. ","",dst$name)
+
+
+dst$nomineret.i.kreds.nr <-as.factor(as.character(dst$nomineret.i.kreds.nr))
+dst$stemmer.i.alt<-as.numeric(as.character(dst$stemmer.i.alt))
+dst$stemmer.pers<-as.numeric(as.character(dst$stemmer.pers))
+dst$valgt.nr<-as.factor(as.character(dst$valgt.nr))
+dst$stedfor.nr<-as.factor(as.character(dst$stedfor.nr))
+
+
+# Add binary election outcome variable
+
+dst = dst %>% 
+  mutate( elected = ifelse(valgt.nr != "", yes = TRUE, no = FALSE)) %>% 
+  rename( votes.all = stemmer.i.alt, votes.pers = stemmer.pers)
+
+
+
+##Merge with merge_final
+
+merge_final <- read.csv(file="dk_ft15_politician_responses_withoutDST.csv", header = TRUE)
+
+df <- left_join(merge_final, dst, by="name")
+
+df1 <- df %>% 
+  filter(is.na(df$votes.pers))
+
+df1 <- df1[,1:25]
+
+df2 <- left_join(df1, dst, by=c("pers.votes"="votes.pers"))
+df2 <- df2 %>% filter (!duplicated(df2$name.x))
+
+df <- df %>% filter (!is.na(df$votes.pers))
+
+
+# Ensure split can be made, by removing excess variables that are not present in both dataframes
+df2 <- df2 %>% 
+  select( -name.y ) %>% 
+  rename( name = name.x)
+
+df <- df %>% 
+  select( -votes.pers)
+
+# Join the two parts of the dataset
+final <- rbind(df, df2)
+
+
+# Cleaning and ordering
+
+final <- final %>% 
+  rename( 
+    is.male = sex,
+    votes.pers = pers.votes
+  )
+
+#Switch to binary gender and last election run
+final <- final %>%             
+  mutate(
+    is.male = ifelse(is.male == " Kvinde ", yes = FALSE, no = TRUE),
+    ran.last.election = ifelse(ran.last.election == " Ja ", yes = FALSE, no = TRUE)
+  )
+
+# Switch to short-form party names
+final <-final %>%
+  mutate(party = ifelse(party == "alternativet", "aa", as.character(party)),
+         party = ifelse(party == "venstre" , "v", as.character(party)),
+         party = ifelse(party == "socialdemokraterne" , "a", as.character(party)),
+         party = ifelse(party == "dansk folkeparti" , "o", as.character(party)),
+         party = ifelse(party == "radikale venstre" , "b", as.character(party)),
+         party = ifelse(party == "socialistisk folkeparti" , "f", as.character(party)),
+         party = ifelse(party == "enhedslisten", "oe", as.character(party)),
+         party = ifelse(party == "liberal alliance" , "i", as.character(party)),
+         party = ifelse(party == "det konservative folkeparti" , "c", as.character(party)),
+         party = ifelse(party == "kristendemokraterne" , "k", as.character(party)),
+         party = ifelse(party ==  "uden for folketingsgrupperne"  , 1, as.character(party))
+  )
+
+# Final ordering of the data
+
+final <- final %>% 
+  select(
+    name = name,
+    party = party,
+    storkreds = storkreds,
+    lokalkreds = lokalkreds,
+    age = age,
+    is.male = is.male,
+    title = title,
+    location = location,
+    elected = elected,
+    votes.pers = votes.pers,
+    votes.all = votes.all,
+    valgt.nr = valgt.nr,
+    stedfor.nr = stedfor.nr,
+    opstillet.i.kreds.nr = opstillet.i.kreds.nr,
+    nomineret.i.kreds.nr = nomineret.i.kreds.nr,
+    ran.last.election = ran.last.election,
+    UDDANNELSE__Efter.folkeskolereformen.får.eleverne.for.lange.skoledage = UDDANNELSE__Efter.folkeskolereformen.får.eleverne.for.lange.skoledage,
+    FOREBYGGELSE__Afgiften.på.cigaretter.skal.sættes.op = FOREBYGGELSE__Afgiften.på.cigaretter.skal.sættes.op,
+    SUNDHED__Et.besøg.hos.den.praktiserende.læge.skal.koste.eksempelvis.100.kr. = SUNDHED__Et.besøg.hos.den.praktiserende.læge.skal.koste.eksempelvis.100.kr.,
+    VELFÆRD__Mere.af.ældreplejen.skal.udliciteres.til.private.virksomheder = VELFÆRD__Mere.af.ældreplejen.skal.udliciteres.til.private.virksomheder,
+    ARBEJDSMARKED__Man.skal.hurtigere.kunne.genoptjene.retten.til.dagpenge = ARBEJDSMARKED__Man.skal.hurtigere.kunne.genoptjene.retten.til.dagpenge,
+    ARBEJDSMARKED__Virksomheder.skal.kunne.drages.til.ansvar.for..om.deres.udenlandske.underleverandører.i.Danmark.overholder.danske.regler.om.løn..moms.og.skat = ARBEJDSMARKED__Virksomheder.skal.kunne.drages.til.ansvar.for..om.deres.udenlandske.underleverandører.i.Danmark.overholder.danske.regler.om.løn..moms.og.skat,
+    ØKONOMI__Vækst.i.den.offentlige.sektor.er.vigtigere.end.skattelettelser = ØKONOMI__Vækst.i.den.offentlige.sektor.er.vigtigere.end.skattelettelser,
+    TRAFIK__Investeringer.i.kollektiv.trafik.skal.prioriteres.højere.end.investeringer.til.fordel.for.privatbilisme = TRAFIK__Investeringer.i.kollektiv.trafik.skal.prioriteres.højere.end.investeringer.til.fordel.for.privatbilisme,
+    RET__Straffen.for.grov.vold.og.voldtægt.skal.skærpes = RET__Straffen.for.grov.vold.og.voldtægt.skal.skærpes,
+    SOCIAL__Kontanthjælpen.skal.sænkes..så.den.økonomiske.gevinst.ved.at.arbejde.bliver.større = SOCIAL__Kontanthjælpen.skal.sænkes..så.den.økonomiske.gevinst.ved.at.arbejde.bliver.større,
+    INTEGRATION__Offentlige.institutioner.i.Danmark.tager.for.mange.hensyn.til.religiøse.minoriteter = INTEGRATION__Offentlige.institutioner.i.Danmark.tager.for.mange.hensyn.til.religiøse.minoriteter,
+    EU__EU.bestemmer.for.meget.i.forhold.til.dansk.lov = EU__EU.bestemmer.for.meget.i.forhold.til.dansk.lov,
+    UDVIKLING__Ulandsbistanden.skal.sænkes = UDVIKLING__Ulandsbistanden.skal.sænkes,
+    MILJØ__Indsatsen.for.at.forbedre.miljøet.skal.gå.forud.for.økonomisk.vækst = MILJØ__Indsatsen.for.at.forbedre.miljøet.skal.gå.forud.for.økonomisk.vækst,
+    KULTUR__Den.offentlige.kulturstøtte.skal.sænkes = KULTUR__Den.offentlige.kulturstøtte.skal.sænkes
+    
+  )
+
+
+# .. afslutningsvist eksporteres det nye datasæt til en .csv fil kaldet ft15_final:
+
+write.table(x = final, file = "dk_ft15_politician_responses.csv", fileEncoding = "UTF-8", sep = ",", row.names = FALSE)
+
+
+
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+                                             #### Analysis: Preparing data for analysis ####
+
+
+data.org <- read.csv(file = "dk_ft15_politician_responses.csv", header = TRUE) #Load the raw dataset
+
+data <- unique(data.org) # Load a "working" dataset, while removing duplicate entries
+
+
+
+## Map responses to Likert-scale-style numeric
+for (i in 17:31){ 
+  data[,i] <- data[,i] %>% 
+    gsub(x = ., pattern = "Helt enig", replacement = 5) %>% 
+    gsub(x = ., pattern = "Delvist enig", replacement = 4) %>% 
+    gsub(x = ., pattern = "Hverken enig eller uenig", replacement = 3) %>% 
+    gsub(x = ., pattern = "Delvist uenig", replacement = 2) %>% 
+    gsub(x = ., pattern = "Helt uenig", replacement = 1) 
+}
+
+for (i in 17:31){
+  data[,i] <- as.numeric(data[,i])    #define as numeric
+}
+
+
+## Create colormapping to use for later plotting
+colormapping <- c(                    
+  "red",
+  "darkorchid4",
+  "lightgreen",
+  "hotpink",
+  "cyan1"     ,
+  "grey"       ,
+  "yellow"      ,
+  "darkblue"     ,
+  "orange"     ,
+  "darkolivegreen4",
+  "lightgrey"
+)
+names(colormapping) <- unique(as.character(data$party)) # Naming the elements in the character vector,
+# for ggplot2 to call later.
+
+## Create partyname mapping to use for later plotting
+namemapping <- c(                    
+  "Socialdemokratiet",
+  "Radikale",
+  "Konservative",
+  "SF",
+  "Liberal Alliance"     ,
+  "Kristendemokraterne"       ,
+  "Dansk Folkeparti"      ,
+  "Venstre"     ,
+  "Enhedslisten"     ,
+  "Alternativet",
+  "Uden for partierne"
+)
+names(namemapping) <- unique(as.character(data$party)) # Naming the elements in the character vector,
+# for ggplot2 to call later.
+
+
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+                                                      #### Analysis: Data description ####
+
+
+
+#@@ Mean responses @@#
+
+## -- Add mean response for each party, for each question -- ##
+
+party.means <- data %>% 
+  filter(party != 1) %>% 
+  group_by(party) %>%
+  summarize_each(funs(mean), -c(name, party, storkreds, lokalkreds, age, is.male,
+                                title, location, elected, votes.pers, votes.all, valgt.nr,
+                                stedfor.nr, opstillet.i.kreds.nr, nomineret.i.kreds.nr,
+                                ran.last.election))
+
+## --- Plot average response to each question, by party --- #
+
+# Construct labels with question text to be plotted
+labels <- data.frame( 
+  question = names(party.means[2:16]),
+  position.y = 16:2+0.5, # position is based on the plot below
+  position.x = rep(3, 15) # position is based on the plot below
+)
+
+
+# Build plot
+p <-  ggplot(data = party.means) #initiate plot
+
+#Loop over each question, and plot the party means
+for(i in 2:16){
+  p <- p + 
+    geom_point(aes_string( 
+      y = 18-i,                                                   # Split questions by y-coordinates for each question
+      x = paste("party.means$", names(party.means)[i], sep = ""), # Let party means be x-axis
+      fill = "party"
+    ), colour = "black", alpha=0.8, shape = 21, size = 10 ) 
+}
+#Add questions  
+p <- p + geom_text(data = labels,
+                   aes( y = position.y, x = position.x, label = question),
+                   size = 3)
+
+#Party colors  
+p <- p +  scale_fill_manual ( values = colormapping )
+
+#Titles and axis
+p <- p + 
+  theme_minimal() +            
+  theme(axis.title.y  = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        panel.grid.minor=element_blank(),
+        legend.position="top") +
+  scale_y_continuous(breaks=seq(1, 16, 1)) +
+  scale_x_continuous(breaks=c(1,3,5),
+                     labels=c("Highly disagree", "Neither agree nor disagree", "Highly agree"))+
+  ggtitle("Mean response to survey \n questions, by party")
+
+#Print plot    
+p      
+
+
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+                                          #### Analysis: How close are paties to the middle ####
+
+
+#Calculate 'centerness' NOTE: Requires above code to have been run already, to create party.means
+party.middle <- party.means
+party.middle[,2:16] <- abs(party.middle[,2:16]-3)  #Re-align around center (defining center = 0) and take absolutes
+party.middle[,17] <- rowMeans(party.middle[,2:16]) #Compute averages
+
+#simplify dataframe
+party.middle <- party.middle %>% 
+  select( party = party, mean.dist.from.center = V17) #Select only the two relevant variables 
+
+#Plot
+p <- ggplot(data = party.middle, aes( x = reorder(party, mean.dist.from.center),
+                                      y = mean.dist.from.center, fill = party)) +
+  geom_bar(stat = "identity", 
+           color = "black"
+  ) +
+  scale_fill_manual( values = colormapping) +
+  coord_flip() +
+  theme_minimal() +
+  ylab("Average distance from 'neither agree nor disagree',\n on 0-2 scale") +
+  xlab("")+
+  ggtitle("What parties have the most extreme opinions?")
+p                         
+
+
+
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+                                                #### Analysis: Principal Component Analysis (part 1) ####
+
+
+
+pc <- princomp(data[,17:31], cor=TRUE, scores=TRUE)
+data.pc <- data
+data.pc[32:36] <- pc$scores[,1:5]
+
+
+# Plot of two political dimensions
+
+data.pc = filter(data.pc, party!="1") #Filter away candidates outside the parties
+
+p <- ggplot(data = data.pc, aes(x = data.pc[,32], y = data.pc[,33] )) +
+  geom_point(aes(fill = party), colour = "black", alpha=0.8, shape = 21, size = 10) +
+  scale_fill_manual(values = colormapping) +
+  theme_minimal()
+p
+
+## Let's try and divide the questions into two groups of questions: 
+#redistribution and value-based policy questions
+
+#Splitting the dataset 
+redist <- data %>% select (1:16,18:19,23:24,26,29,31)
+value <- data %>% select (1:17, 20:22,25, 27:28,30)
+
+##Do PCA analysis on both subsets and restore 5 first components
+pc1 <- princomp(redist[,17:23], cor = T, scores = T)
+redist[24:28] <- pc1$scores[,1:5]
+pc2 <- princomp(value[,17:24], cor = T, scores = T)
+value[25:29] <- pc2$scores[,1:5]
+
+##Compute summary statistics on components
+summary(princomp(redist[,17:23], loadings = T ))
+summary(princomp(value[,17:24], loadings = T ))
+
+##Add the first component from each subset to original data in order to plot in same plot
+data.pc[37] <- pc1$scores[,1]
+data.pc[38] <- pc2$scores[,1]
+
+##The PCA - using first component from each subset analysis
+p <- ggplot(data.pc, aes(x = data.pc[,37], y=data.pc[,38])) +
+  geom_point(aes(fill = party), colour = "black", alpha=0.8, shape = 21, size = 10) +
+  scale_fill_manual(values = colormapping) +
+  theme_minimal()
+p
+
+
+#Faceted Party Plot #### Note: not in final report 
+data.pc = filter(data.pc) #Filter away candidates outside the parties
+
+p <- ggplot(data = data.pc, aes(x = data.pc[,32], y = data.pc[,33], size = sqrt(votes.pers/pi))) +
+  geom_point(aes(fill = party), colour = "black",
+             alpha=0.8, shape = 21) +
+  scale_size_continuous( range = c(1,25) ) +
+  scale_fill_manual(values = colormapping) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  facet_wrap(~ party)
+p
+
+
+
+
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+                                        #### Analysis: Principal Component Analysis (part 2) ####
+
+# make a vecor containing the names of the partyleaders
+
+partyleaders <- c(
+  "Mette Frederiksen",
+  "Morten Østergård",
+  "Søren Pape",
+  "Pia Olsen Dyhr",
+  "Anders Samuelsen",
+  "Stig Grenov",
+  "Kristian Thulesen Dahl",
+  "Søren Gade",
+  "Johanne Schmidt-Nielsen",
+  "Uffe Elbæk")
+
+names(partyleaders) <- c("name")
+
+
+
+# Principal Component Analysis 
+pc <- princomp(data[,17:31], cor=T, scores=TRUE)
+data.pc <- data
+data.pc[32:36] <- pc$scores[,1:5]
+summary(princomp(data[,17:31], cor=T, scores=TRUE))
+
+# for labelling in PCA plots
+leaders <- data.pc %>% 
+  filter (data.pc$name %in%partyleaders)
+data.pc$name=as.character(data.pc$name)
+leaders$name=as.character(leaders$name)
+
+# create new variable for labelling in PCA plots 
+data.pc=mutate(data.pc, labels=ifelse(data.pc$name%in%leaders$name, data.pc$name, NA))
+
+# PCA plot two first components#
+p <- ggplot(data = data.pc, aes(x = data.pc[,32], y = data.pc[,33])) +
+  geom_point(aes(fill = party), colour = "black", alpha=0.8, shape = 21, size = 10) +
+  scale_fill_manual(values = colormapping) +
+  geom_text(aes(label=data.pc$labels), family="Helvetica",  hjust=0, fontface="bold", size=7 )+
+  theme_minimal()+
+  ylab("Second Component")+
+  xlab("First Component")
+p
+
+# For labelling in loadings plot 
+loadings <- as.data.frame.array(pc$loadings)
+loadings$labels <- str_extract(rownames(loadings), "[A-Ø]*__")
+loadings$labels <- gsub("__","", loadings$labels)
+
+# Labels in first component
+loadings <- mutate(loadings, loadings1a = ifelse(loadings$Comp.1<0, loadings$labels, NA))
+loadings <- mutate(loadings, loadings1b = ifelse(loadings$Comp.1>0, loadings$labels, NA))
+
+
+# Loadings x PCA plot
+ggplot(data=loadings, aes(x=reorder(rownames(loadings),abs(loadings$Comp.1)) , y=loadings$Comp.1))+
+  geom_bar(stat="identity", position = "identity", fill="#E6A0C4")+
+  geom_text(aes(y=0, label=loadings$loadings1b), hjust=0, fontface="bold")+
+  geom_text(aes(y=0, label=loadings$loadings1a), hjust=1, fontface="bold")+
+  coord_flip()+
+  theme_minimal()+
+  theme(axis.ticks = element_blank(), axis.text.y = element_blank(), 
+        plot.title=element_text(size = 22, face = "bold"))+
+  ylab("")+xlab("")
+
+# Labels in second component
+loadings <- mutate(loadings, loadings2a = ifelse(loadings$Comp.2<0, loadings$labels, NA))
+loadings <- mutate(loadings, loadings2b = ifelse(loadings$Comp.2>0, loadings$labels, NA))
+
+
+# Loadings x PCA plot
+ggplot(data=loadings, aes(x=reorder(rownames(loadings),abs(loadings$Comp.2)) , y=loadings$Comp.2))+
+  geom_bar(stat="identity", position = "identity", fill="#C6CDF7")+
+  geom_text(aes(y=0, label=loadings$loadings2b), hjust=0, fontface="bold")+
+  geom_text(aes(y=0, label=loadings$loadings2a), hjust=1, fontface="bold")+
+  coord_flip()+
+  theme_minimal()+
+  theme(axis.ticks = element_blank(), axis.text.y = element_blank(), 
+        plot.title=element_text(size = 22, face = "bold"))+
+  ylab("")+xlab("")
+
+# New PCA - split questions into redistributional and GAL-TAN values
+
+#Split the dataset into two groups of questions: redistribution and value-based policy questions#
+redist <- data %>% select (1:16,18:19,23:24,26,29,31)
+value <- data %>% select (1:17, 20:22,25, 27:28,30)
+
+# Do PCA analysis on both subsets and restore 5 highest components
+pc1 <- princomp(redist[,17:23], cor = T, scores = T)
+redist[24:28] <- pc1$scores[,1:5]
+pc2 <- princomp(value[,17:24], cor = T, scores = T)
+value[25:29] <- pc2$scores[,1:5]
+
+# Compute summary statistics on components
+summary(princomp(redist[,17:23], loadings = T ))
+summary(princomp(value[,17:24], loadings = T ))
+
+# Add the first component from each subset to original data in order to plot in same plot
+data.pc <- data
+data.pc[,38] <- pc1$scores[,1]*(-1) ## we reverse the scale in order to obtain left-right dimensions
+data.pc[,39] <- pc2$scores[,1]*(-1)
+
+
+##The PCA plot - seperated data##
+p <- ggplot(data.pc, aes(x = data.pc[,38], y=data.pc[,39])) +
+  geom_point(aes(fill = party), colour = "black", alpha=0.8, shape = 21, size = 10) +
+  scale_fill_manual(values = colormapping) +
+  theme_minimal()+
+  ylab("Second Component")+
+  xlab("First Component")
+p
+
+
+
+
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+                                              #### Analysis: Classification Tree Analysis  ####
+
+
+
+# first make a seed for the random sampling
+
+set.seed(1)
+
+# then separate into training and test data and rename the question categories
+
+train <- sample( x = 1:nrow(data), size = 2/3 * nrow(data), replace = FALSE)
+data.train <- data[train, ]
+data.train <- data.train[,c(2,17:31)]
+names(data.train) = c("party","uddannelse","forebyggelse","sundhed","velfærd","arb1","arb2","økonomi","trafik","ret","social","integration","eu","udvikling","miljø","kultur")
+data.test <- data[-train,]
+data.test <- data.test[,c(2,17:31)]
+names(data.test) = c("party","uddannelse","forebyggelse","sundhed","velfærd","arb1","arb2","økonomi","trafik","ret","social","integration","eu","udvikling","miljø","kultur")
+
+# Fit and train the classification tree
+
+model = rpart(party ~ ., data = data.train, method = "class")
+
+# Make predictions from the model on the test data
+
+partychoice = predict(model, newdata = data.test, type = "class")
+
+# draw the classification tree (with some nice formatting)
+
+prp(model,   box.col = "lightblue", border.col = "darkblue", shadow.col = "lightgrey", split.cex = 0.7,split.font = 4, split.col = "darkblue", split.border.col = 9, split.shadow.col = "lightgrey", nn.col = "darkred")
+
+# make a list of the importance of the different variables
+
+v.importance <- data.frame(model$variable.importance)
+
+# run the model on the whole dataset to finde non-homogenious candidates (with the assumption of our model speaking the truth)
+
+data.pred <- data[,c(2,17:31)]
+
+names(data.pred) <- c("party","uddannelse","forebyggelse","sundhed","velfærd","arb1","arb2","økonomi","trafik","ret","social","integration","eu","udvikling","miljø","kultur")
+
+pred = data.frame(predict(model, newdata = data.pred, type = "class"))
+
+data.pred <- cbind(data.pred, pred)
+
+# combine the original data with the prediction outcomes and include personal votes
+
+data.pred$homogen = ifelse(data.pred$party == data.pred[,17], 1,0 )  
+
+data.pred = mutate(data.pred, votes = data$votes.pers)
+
+# how is the mean personal votes for "homogenious" candidates versus "non-homogenious"
+
+homogenious <- data.pred %>%
+  group_by(homogen) %>%
+  summarise(meanvotes = mean(votes))
+homogenious
+
+# how is the homoginity along parties
+
+p.homogenious <- data.pred %>%
+  group_by(party) %>%
+  summarise(homogenious.candidates = sum(homogen), num.candidates = n(), mean.votes = mean(votes)) %>%
+  filter(party != 1) %>%
+  mutate(fraction = (homogenious.candidates / num.candidates) * 100) %>%
+  arrange(-fraction) %>%
+  select(party, mean.votes, fraction)
+p.homogenious
+
+stargazer(p.homogenious)  
+
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+                                               #### Analysis: Agreement between candidates, Altinget definition, 1  ####
+
+##@ Construct matrix of agreement between each pair of candidates @##
+
+# Import and transpose responses
+df.distance <- t(data[,17:31])
+
+#Create empty matrix
+cand.distance <- matrix(nrow = ncol(df.distance), ncol = ncol(df.distance))
+
+#Fill out matrix, using DRs definition of agreement
+for (k in 1:nrow(cand.distance)){
+  for (i in 1:ncol(cand.distance)) {
+    cand.distance[k,i] <- sum((-abs(df.distance[,k] - df.distance[,i])+4) / 60) #Use Altingets definition of Agreement
+  }
+  print(k)
+}  
+
+rm(df.distance)
+
+
+
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+                                          #### Analysis: Agreement with other candidates, full melted data set, 2  ####
+
+
+
+### Goal: the dataset should end up looking like this #
+
+# Name1             name2           party_1       lokalkreds_1  storkreds_1   agreement     name2           party_1       lokalkreds_1  storkreds_1  
+# navn navnsen1     navn navnsen1   venstre       xxx           xxxxx         88 %          navn navnsen1   venstre       xxx           xxxxx        
+# navn navnsen1     lars l?kke      venstre       xxx           xxxxx         58 %          lars l?kke      venstre       xxx           xxxxx        
+# navn navnsen1     pia k           venstre       xxx           xxxxx         42 %          pia k           venstre       xxx           xxxxx        
+# .....                                                                                                                                            
+# .....                                                                                                                                            
+# .....                                                                                                                                            
+# navn navnsen2      navn navnsen1  xxxx          xxxx          xxxxx         88 %           navn navnsen1  xxxx          xxxx          xxxxx        
+# navn navnsen2      lars l?kke                                                              lars l?kke                                              
+# navn navnsen2      pia k                                                                   pia k                                                   
+# navn navnsen2      ...                                                                     ...                                                     
+
+
+# Step 1: Add names, party, lokalkreds and storkreds to the dataframe with full distances
+# Step 2: Melt the dataframe
+# Step 3: Compute the distance for each candidate to the wanted other candidates by filtering and mutate (party, kreds, etc.)
+# Step 4: Add distance measures as a single variable to the original dataset
+
+
+### Step 1: Add names, party, lokalkreds and storkreds to the dataframe with full distances
+
+cand.distance <- cbind(data[,c(1,2,3,4)], cand.distance)
+
+
+#Put names on columns as well      
+names(cand.distance)[5:728] <- as.character(cand.distance[,1])
+
+
+
+
+
+#Melt dataframe to obtain a 'long' version of the above distance matrix, as depicted in goal
+melted.distance <- melt(data = cand.distance,
+                        id.vars = c(1,2,3,4),
+                        value.name = "agreement")
+
+#Add candidate info to both 'sides' of the list (such that info is attached to both names in every row)
+cand.info <- cand.distance[,1:4]
+melted.distance <- left_join(melted.distance, cand.info, by = c("variable" = "name"))
+rm(cand.info)
+#Goal reached!
+
+
+##@ Create distance measures @##
+
+#Average agreement with three nearest same party candidates within storkreds
+distance.measure <- melted.distance %>% 
+  filter(
+    storkreds.x == storkreds.y &      # Look only within same storkreds (for those with unknown lokalkreds)
+      party.x == party.y &            # Look only across parties
+      name != variable) %>%           # Technical: remove agreement with oneself
+  group_by(name) %>% 
+  arrange(desc(agreement)) %>% 
+  filter( 1:n() == 1 | 1:n() == 2 | 1:n() == 3) %>%  #Select top three, with ties removed (always takes three)
+  summarize(
+    agree.three.mean.party.storkreds = mean(agreement)
+  )
+agree.three.mean.party.storkreds <- distance.measure
+
+
+#Average agreement with three nearest non-same party candidates within storkreds
+distance.measure <- melted.distance %>% 
+  filter(
+    storkreds.x == storkreds.y &      # Look only within same storkreds (for those with unknown lokalkreds)
+      party.x != party.y &            # Look only across parties
+      name != variable) %>%           # Technical: remove agreement with oneself
+  group_by(name) %>% 
+  arrange(desc(agreement)) %>% 
+  filter( 1:n() == 1 | 1:n() == 2 | 1:n() == 3) %>%  #Select top three, with ties removed (always takes three)
+  summarize(
+    agree.three.mean.oth.party.storkreds = mean(agreement)
+  )
+agree.three.mean.oth.party.storkreds <- distance.measure
+
+
+##@ Add to original dataframe @##
+
+#Add distance measures to principal component dataframe
+data.pc <- left_join(data.pc, agree.three.mean.party.storkreds)
+data.pc <- left_join(data.pc, agree.three.mean.oth.party.storkreds)
+
+
+### Plot agree.mean and personal votes in PCA dimensions
+
+# Plot of mean agreement with five nearest candidates
+
+data.pc.plot <- filter(data.pc, party != "1")
+p <- ggplot(data = data.pc.plot, aes(x = data.pc.plot[,32], y = data.pc.plot[,33], size = sqrt(votes.pers/pi))) +
+  geom_point(aes(fill = agree.three.mean.party.storkreds), colour = "black", alpha=0.8, shape = 21) +
+  scale_size_continuous( range = c(1,25), labels = c("4,000", "15,000"), breaks = c(50, 100), name =  "votes" ) +
+  scale_fill_continuous(low = "green", high = "red", name = "agree.mean") +
+  theme(legend.position = "none") +
+  # facet_wrap(~ party) +
+  xlab("First Component") + 
+  ylab("Second Component") + 
+  theme_minimal()
+p  
+
+
+
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+                                        #### Analysis: Compute center response of each party  ####
+
+
+centers <- data %>% 
+  select(party, 17:31) %>%            # Select all questions
+  group_by(party) %>%                 # group by party
+  summarize_each( funs(mean) ) %>%    # take means of each question
+  
+  #Add to each line in the dataset, the agreement with that persons party
+  for (i in 1:nrow(data.pc)) {
+    par <- data.pc$party[i]           # Record party for candidate i
+    data.pc$agree.party.mean[i] = sum((-abs(data.pc[i,17:31] - filter(centers, party == par)[,2:16])+4) / 60) #Compute agreement
+    print(i) #Print algorithm progress
+  }
+
+#Compute average agreement by party, NOTE: Not in report
+party.centers <- data.pc %>% 
+  group_by(party) %>% 
+  summarize(
+    average.agreement = mean(agree.party.mean) * 100
+  ) %>% 
+  arrange(desc(average.agreement))
+party.centers #Print in console
+
+
+# Plot spread of each party, NOTE: Not in report
+p <- ggplot( data = party.centers, aes( x = reorder(party, average.agreement), y = average.agreement, fill = party) ) +
+  geom_bar(stat = "identity") + 
+  scale_fill_manual(values = colormapping) +
+  coord_flip()+
+  theme_minimal() +
+  ylab("..") +
+  # ylim(60, 100)+
+  xlab("..")+
+  ggtitle("...")
+p
+
+
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+                                            #### Analysis: Regression Analysis  ####
+
+
+names(reg.data)
+
+reg.data <- data.pc
+reg.data <- filter(reg.data, party != "1")
+
+# The following regression code, can be altered to include different combinations of variables,
+# by commenting and uncommenting the lines below
+
+
+lm1 <- lm(formula = votes.pers ~ 
+            agree.three.mean.party.storkreds + 
+            # agree.three.mean.party.storkreds*party +
+            # agree.three.mean.oth.party.storkreds + 
+            # agree.party.mean +
+            # agree.party.mean*party +
+            # party +
+            is.male +
+            ran.last.election+
+            age,
+          data = reg.data, na.action = "na.omit")
+summary(lm1) #Plot summary 
+length(lm2$fitted.values)   # Plot the number of observations (which is equal to the number of fitted values)
+
+
+
+stargazer(lm1, lm2, lm3)    # Print output to be used (after cleanup) in Report
+
+
+### How many votes does it take to get elected? Plotting kernel density estimates of personal
+### votes by binary election. NOTE: Not in report.
+
+p <- ggplot(data = data.pc, aes( x = votes.pers, group = elected, fill = elected)) +
+  geom_density(alpha = 0.6) +
+  scale_x_log10( breaks =  c(10, 100, 500, 1000, 2000, 5000, 10000,50000 )) +
+  scale_fill_discrete() +
+  xlab("Personal votes received") +
+  theme_minimal()
+p
+
+# Compute the number of elected and unelected candidate with fewer than 2000 votes (referenced in text)
+av <- data.pc %>% 
+  group_by(elected) %>%
+  filter(votes.pers < 2000) %>% 
+  summarize(av = n() ) 
+av
+
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+                                          #### Analysis: Description of the agree.mean_{i} variable ####
+
+
+
+summary(data.pc$agree.three.mean.party.storkreds) #Mean and quartiles
+sqrt(var(data.pc$agree.three.mean.party.storkreds, na.rm = TRUE)) #Standard deviation
+
+#Density estimates with normal curve
+p <- ggplot(data = data.pc, aes(x = agree.three.mean.party.storkreds))+
+  stat_function(fun = dnorm, args = list(mean = 0.8586,
+                                         sd = 0.07812928)) + # This is crap code, but it works. Sorry.
+  geom_density(na.rm = T, fill = "darkgreen", alpha = 0.8) +
+  theme_minimal()
+p
+
+#Counting the number with agree.mean_{i} = 1.00 (referenced in text)
+data.pc <- data.pc %>% ungroup()
+sum(data.pc[,42][data.pc[,42] == 1], na.rm = T)
+
+
+
+
+
+#Explanation of agreement definition
+# http://www.altinget.dk/kandidater/ft15/information.aspx#.VmNPf7xlmRs
