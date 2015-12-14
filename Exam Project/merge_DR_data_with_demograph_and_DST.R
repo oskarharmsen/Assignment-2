@@ -117,8 +117,10 @@ print(paste(i, "of", nrow(kandidater.ft15), "completed.", sep = " ")) #Keep trac
 
 }
 
- # 3. nogle gange er der forskydninger i det scrapede data, da enkelte kandidater har angivet placeringen
- # på valglisten (eks. række 153). Disse rækker identificeres og rettes:
+  # 3. for some of the rows the variables os not in the correct column due to asymmetry where some candidates 
+  # has a variable containing the position on the actual election list (for example row # 152). Those rows 
+  # has to be identified and correctet:
+
 
 kandidat.data   = kandidat.data %>%
   mutate(indi   = ifelse(grepl("Opstillet" , buffer) == TRUE , 1, 0))           %>%
@@ -131,7 +133,7 @@ kandidat.data   = kandidat.data %>%
   
 
 
-  # 4. laver en generel datacleaning på sættet:
+  # 4. do a generel data cleaning of the data:
 
 kandidat.data <- kandidat.data %>%
   mutate(storkreds             = str_replace_all(storkreds,"storkreds",""))     %>%
@@ -143,11 +145,11 @@ kandidat.data <- kandidat.data %>%
   mutate(navn                  = str_replace_all(navn,"aa","å"))                %>%
   mutate(opstillet_sidste_valg = str_replace_all(opstillet_sidste_valg,"Opstillet ved sidste valg:","")) 
   
-  # 5. sammenkobling med det orginale data
+  # 5. merging with the original data:
 
  raw <- read_csv("dk_ft15_politician_responses_DR_DATA_ONLY.csv")
  
-  # .. først rettes partinavn:      
+  # .. first, the names of the party should be full lenght instead of letter (for merging comparison reasons)    
 raw = raw %>%
   mutate(party = ifelse(party == "aa", "alternativet", as.character(party)))                 %>%
   mutate(party = ifelse(party == "v" , "venstre", as.character(party)))                      %>%
@@ -162,8 +164,8 @@ raw = raw %>%
   mutate(party = ifelse(party ==  1  , "uden for folketingsgrupperne", as.character(party))) %>%
   mutate(name = str_replace_all(name, "aa","å"))
 
-  # .. der laves manuelle rettelser af navne. Disse er identificeret i loppet nedenfor, og kan 
-  # ikke matches, da de alle var stavet forkert i det oprindelige data for kandidaterne. 
+  # .. manual corrections of some of the names. Those ones got identified in the next loop and could not 
+  # be matched due to incorrect spelling in most cases. 
 
   kandidat.data$navn[361] = "Søren Burcharth"
   kandidat.data$navn[629] = "Anne-Marie Tørnes Hansen"
@@ -175,11 +177,13 @@ raw = raw %>%
   #raw <- rename(raw, navn = name)
   names(raw)[1] <- "navn"
 
-# .. data for valgtesten samt kandidater merges (dem som altså har sammenlignelige navne):
+# .. merging of the VAA and candidate data (those observation that can compared in terms of name): 
 
 merge_raw  = left_join(raw,kandidat.data, by = "navn") 
 
-# .. der laves et kandidat ID i de to datasæt, således de i den senere kode kan identificeres:
+# .. introducing a new variable called ID for both datasets. This should establish i way to identify 
+# the candidates in the later code.
+
 
 id.k = seq(1,nrow(kandidat.data))
 kandidat.data = mutate(kandidat.data, id.k = id.k)
@@ -187,32 +191,33 @@ kandidat.data = mutate(kandidat.data, id.k = id.k)
 id.r = seq(1,nrow(merge_raw))
 merge_raw = mutate(merge_raw, id.r = id.r)
 
-# .. da navnene i valgtesten og kandidatdatasættet ikke altid er ens, grundet brug af mellemnavne 
-# mv., er det altså ikke alle som er merged ordenligt. Dertil identifiseres disse i første omgang:
+# .. because the names in the VAA and candidate data is not always the same (even though it's the same candidate,
+# but different use of middle name ect.) not every rows is merged correctly. Fist, we identify those:
 
 skalrettes = filter(merge_raw, is.na(parti) == TRUE) 
 
-# .. følgende kodestump gennemgår altså disse navne fra "skalrettes" og ser om de kan kobles sammen
-# med navne fra kandidatdatasættet ved at kigge på om fornavnet og efternavnet passer, samt partiet 
-# er det samme, ELLER, fornavn og mellemnavn det samme samt samme parti. Er dette gældende, indsættes
-# data fra kandidat-datasættet i de manglende felter i det mergede data (merge_raw) ved hjælp af 
-# kandidat ID'et skabt tidligere. 
+# .. the following code chunk will go through "skalrettes" just created and try to connect these names with the ones
+# in the candidate data. The code will identify it as a match IF the first name, sir name and pary is the same in the two 
+# dataset OR IF the firstname, middle name and party is the same. If there is a match, the variables from the candidate 
+# data will be copied into the missing values in the merged data for the matched candidate (here we use the ID created before)
 
 fejl = c()
 for(i in 1:nrow(skalrettes)){
+    
+    # first, a filter is made on the data to be searched by the relevant party. In that way, we 
+    # limit the size of the loop each time.
 
-    # først laves der et filter på det data som skal gennemsøges, således det kun er de personer
-    # med det relevante parti:
     parti.filter = skalrettes$party[i]  
     data.filter = filter(kandidat.data, parti == parti.filter ) 
     
-    # herefter noteres kandidatens navn og ID:
+    # thereafter we note the ID's
     opdel = skalrettes$navn[i]
     id.r  = skalrettes$id.r[i]
-
-    # nu loopes der igennem for at se på de omtalte kriterier, og sende data til merge_raw hvis 
-    # koden finder et match. Hvis ikke vil rækkenummeret blive identifiseret og smidt i vektoren
-    # fejl. Denne skal altså gerne være tom, hvilket den slutteligt også er. 
+    
+    # now we loop through the narrowed seach data and look for the criterias described above, 
+    # and copy in the observation in merge_raw for the matched candidates. If the code can't find 
+    # a match, it will output the rownumber to a vector. By looking at the vector we could identidy
+    # the candidates that could not be matched due to spelling errors ect. (which is correctet above).
     
     k = "ikke fundet"
     for(j in 1:nrow(data.filter)){
@@ -240,11 +245,11 @@ for(i in 1:nrow(skalrettes)){
    }
 } 
 
-# .. der er to dubletter som ikke kan identifisers med kode, men rettes manuelt:
+# .. two observations are accouring more than once, and since they can't be corrected be the code, we have the exclude them manually.  
 merge_final = merge_raw[-611,]
 merge_final = merge_final[-702,]
 
-# .. variable som optræder flere gange slettes og der navngives:
+# .. selection of variables:
 
 merge_final = select(merge_final, -id.r, -id.k, -alder, -buffer)
 
