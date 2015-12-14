@@ -733,12 +733,25 @@ data.pc <- left_join(data.pc, agree.three.mean.oth.party.storkreds)
 ### Plot: DISTANCE TO OWN PARTY
 
 # Plot of mean agreement with five nearest candidates
-p <- ggplot(data = data.pc, aes(x = data.pc[,32], y = data.pc[,33] )) +
-  geom_point(aes(fill = agree.three.mean.party.storkreds), colour = "black", alpha=0.8, shape = 21, size = 10) +
-  scale_fill_continuous(low = "green", high = "red") +
+
+data.pc.plot <- filter(data.pc, party != "1")
+p <- ggplot(data = data.pc.plot, aes(x = data.pc.plot[,32], y = data.pc.plot[,33], size = sqrt(votes.pers/pi))) +
+  geom_point(aes(fill = agree.three.mean.party.storkreds), colour = "black", alpha=0.8, shape = 21) +
+  scale_size_continuous( range = c(1,25), labels = c("4,000", "15,000"), breaks = c(50, 100), name =  "votes" ) +
+  scale_fill_continuous(low = "green", high = "red", name = "agree.mean") +
   theme(legend.position = "none") +
-  #facet_wrap(~ party) +
+ # facet_wrap(~ party) +
+  xlab("First Component") + 
+  ylab("Second Component") + 
   theme_minimal()
+p  
+
+p <- ggplot(data = data.pc, aes(x = data.pc[,32], y = data.pc[,33], size = sqrt(votes.pers/pi))) +
+  geom_point(aes(fill = party), colour = "black",
+             alpha=0.8, shape = 21) +
+  scale_size_continuous( range = c(1,25) ) +
+  
+  
 p
 
 
@@ -786,23 +799,61 @@ reg.data <- filter(reg.data, party != "1")
 # agree.three.mean, Signifikant for: a, b, k, (positiv alle)
 # agree.three.oth.mean, signifikant for o (negativ), 
 
-lm1 <- lm(formula = votes.pers ~ 
-            agree.three.mean.party.storkreds + 
+lm2 <- lm(formula = log(votes.pers) ~ 
+            # agree.three.mean.party.storkreds + 
             # agree.three.mean.oth.party.storkreds + 
             # agree.three.mean.party.storkreds*party +
             # nearest.cand +
             # nearest.five.mean +
-            agree.party.mean +
+            # agree.party.mean +
             # agree.party.mean*party +
             # party +
             # opstillet.i.kreds.nr +
-            is.male +
-            ran.last.election,
-          data = reg.data)
-summary(lm1)
+              is.male +
+              ran.last.election+
+              age,
+          data = reg.data, na.action = "na.omit")
+summary(lm2)
+length(lm2$fitted.values)
 
-cov(data.pc$agree.party.mean, data.pc$agree.three.mean.party.storkreds)
 
+
+library(stargazer)
+
+stargazer(lm1, lm2, lm3)
+
+### How many votes does it take to get elected?
+
+av <- data.pc %>% 
+      group_by(elected) %>%
+      filter(votes.pers < 2000) %>% 
+      summarize(av = n() ) 
+av
+
+p <- ggplot(data = data.pc, aes( x = votes.pers, group = elected, fill = elected)) +
+     geom_density(alpha = 0.6) +
+     scale_x_log10( breaks =  c(10, 100, 500, 1000, 2000, 5000, 10000,50000 )) +
+     scale_fill_discrete() +
+     xlab("Personal votes received") +
+     theme_minimal()
+p
+
+
+
+#### Description of the distance measure #### -----------
+
+summary(data.pc$agree.three.mean.party.storkreds)
+sqrt(var(data.pc$agree.three.mean.party.storkreds, na.rm = TRUE))
+
+p <- ggplot(data = data.pc, aes(x = agree.three.mean.party.storkreds))+
+  stat_function(fun = dnorm, args = list(mean = 0.8586,
+                                         sd = 0.07812928)) + # This is crap code, but it works. Sorry.
+  geom_density(na.rm = T, fill = "darkgreen", alpha = 0.8) +
+  theme_minimal()
+p
+
+data.pc <- data.pc %>% ungroup()
+sum(data.pc[,42][data.pc[,42] == 1], na.rm = T)
 
 
 
