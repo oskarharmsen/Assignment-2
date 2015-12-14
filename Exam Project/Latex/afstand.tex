@@ -1,0 +1,30 @@
+\section{The political landscape: VAAs and Election outcomes}
+The question of whether VAAs have an impact on election outcomes has been discussed extensively in the literature, and is of interest not just for academics, but as a general objective of obtaining a deeper understanding of how democracies work. Given the sheer magnitude of the voters who turn to VAAs (more than 25\% of Danish voters took the DR test), the question becomes even more pressing. Entangling the effects of VAAs has however proven difficult - previous literature mostly relies on methods of surveys; INDSÆT BESKRIVELSER AF TIDLIGERE STUDIER HER.
+In this section, we present a new test for the impact of VAAs on election outcomes, that uses only the candidates’ responses to the VAA (as well as some background data). This research should be taken as a preliminary indication of a specific type of impact test, namely testing for the possibilty of ‘gaming the system’, by taking a position that is ‘unoccupied’ by others, rather than a general test for its impact. Nevertheless, we hope our approach can be a valuable addition to the literature in this account. The main hypothesis we attempt to test is the following;
+Hypothesis 1:
+Candidates that make themselves distinct will receive more personal votes. 
+We propose the following reasoning behind the hypothesis: if voters’ preferences map into responses in a sufficiently ‘noisy’ way, a candidate who has a higher ‘distance’ to other candidates, would end up as the top candidate with a higher number of test takers, than candidates who lie very close to others. If VAAs have a discernible impact on voting behavior, candidates who are more likely to end up on top of the results with test takers should receive more personal votes. 
+However, an opposite mechanism could be expected to exist: when candidates are observed to cluster around a specific position, we might hypothesize that it such positions would be popular among voters. As above, this would lead candidates in such positions to end up as the top candidate with more test takers, if voters and candidates cluster around the same positions. 
+It is important to note, that our identification method does not allow us to explicitly distinguish these two mechanism from one another. A highly robust method of doing so, would likely require data on the test takers’ responses to the VAA. We were unfortunately not able to obtain this data from DR. One way of alleviating this issue is to measure distinctiveness for any candidate, not from the entire set of remaining candidates, but only for those within the same party and the same voting district (storkreds). 
+As a graphical representation of the ideas, see FIGURE BELOW. Assume that three candidates, A, B and C are fairly close on political opinions, but there is higher agreement between B and C, than between Candidate A and the two others. If voters responses to a VAA are spread noisily over the depicted policy space, Candidate A will have a larger area to ‘herself’, and will therefore be shown as the top result with more voters. However, if Candidates B and C are clustered around an opinion that is also popular with test takers (and voters) they are likely to receive more personal votes.
+[figur - politisk enighed]
+
+\subsection{Measures of distance and distinctiveness of a candidate}
+Our identification strategy rests on two primary elements: First, we need a precise definition of the distance between two candidates. Second, we need an appropriate method of capturing the distance measure for each candidate, which requires answering the question: for any one candidate, who are the relevant other candidates to measure the distance to? Both will be elaborated on below.
+While the data science toolbox provides a wide array of options for assessing distance between points in multi-dimensional, potentially correlated space (e.g. Euclidean distance, Mahanolobi’s distance) we have chosen a definition that mirrors the assumed mechanism of our hypothesis: the ‘agreement’ measure actually used in computing the results of a VAA. As described in Section 1, users are shown a ‘percentage agreement’ with candidates based on their responses to the VAA. The percentage agreement between Candidate i and Candidate j is defined as,
+\begin{equation}
+agree.mean_{i}	=	\dfrac{1}{n_{P_{i}}}\cdot\sum_{P_{i}}agree_{i,p}
+\end{equation}
+where $n_{P_{i}}$ is the number of candidates in the set $P_i$.
+
+\subsection{Identification strategy}
+Our identification strategy relies on a linear regression framework using data from the entire sample. Before we proceed with the model, it is worth dwelling shortly on the distinction between this approach and the data scientific approach used above in SECTIONS XX AND XX. MACHINE LEARNING: INFERENS KONTRA PREDICTION.
+Our variable of interest is the number of personal votes a candidate receives. As described in SECTION 1  .... The personal votes a candidate receives is the most precise measure of a candidates’ election outcome, and has more variation than the binary election outcome (elected or not). Our baseline regression model is the following,
+\begin{equation}
+votes_{i}=\beta_{0}+\beta_{1}agree_{i,j}+\boldsymbol{\beta}'\mathbf{X}_{i}+\varepsilon_{i}
+\end{equation}
+where we are most interested in the estimate of $\beta_{1}$, which measures the impact of being close to other candidates. A negative $\beta_{1}$ implies a positive effect of being ‘distinct’ from other candidates. The variables in $X_{i}$ represent control variables such as background demographic information and whether or not the candidate has previously been elected - they will be included in case there is any covariance with $agree_{i,j}$, which would otherwise imply a biased estimate of $\beta_{1}$.
+
+\section{Conclusion}
+[...]
+
