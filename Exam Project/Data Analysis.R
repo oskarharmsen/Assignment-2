@@ -276,7 +276,7 @@ p
 
 
 #### Decision tree analysis ####
-<<<<<<< HEAD
+
   
   library(rpart)
   set.seed(1)
@@ -300,30 +300,29 @@ p
   prp(model, extra = 8,  box.col = "lightblue", border.col = "darkblue", shadow.col = "lightgrey", split.cex = 0.7,split.font = 4, split.col = "darkblue", split.border.col = 9, split.shadow.col = "lightgrey", nn.col = "darkred")
   
   
+  # variable importance
   
+  v.importance <- data.frame(model$variable.importance)
+
+  # run the model on the whole dataset
   
-=======
+  data.pred <- data[,c(2,17:31)]
+  names(data.pred) <- c("party","uddannelse","forebyggelse","sundhed","velfÃ¦rd","arbejdsmarked1","arbejdsmarked2","Ã¸konomi","trafik","ret","social","integration","eu","udvikling","miljÃ¸","kultur")
 
-library(rpart)
-set.seed(1)
-
-# separate into training and test data
-train <- sample( x = 1:nrow(data), size = 2/3 * nrow(data), replace = FALSE)
-data.train <- data[train, ]
-data.test <- data[-train,]
-
-# Fit decision tree
-model = rpart(party ~ ., data = data.train[,c(2,17:31)], method = "class")
-
-partychoice = predict(model, newdata = data.test[,c(2,17:31)], type = "class")
-summary(model)
-
-library("rpart.plot")
-prp(model, type = 4, extra = 2, nn = TRUE)
-
-
-
->>>>>>> origin/master
+  pred = data.frame(predict(model, newdata = data.pred, type = "class"))
+  
+  data.pred <- cbind(data.pred, pred)
+  
+  data.pred$homogen = ifelse(data.pred$party == data.pred[,17], 1,0 )  
+  
+  data.pred = mutate(data.pred, votes = data$votes.pers)
+  
+  # how is the mean personal votes for "homogenious" candidates versus "non-homogenious"
+  
+  homogenious <- data.pred %>%
+    group_by(homogen) %>%
+    summarise(meanvotes = mean(votes))
+  
 #### Distances between points #### ---------------------------  
 
 # Construct matrix of Euclidean distances between all candidates, in all dimensions
@@ -639,7 +638,7 @@ p
 
 # Name1             name2           party        lokalkreds     storkreds     agreement   
 # navn navnsen      esben lunde     venstre       xxx           xxxxx         88 %
-# navn navnsen      lars løkke      venstre       xxx           xxxxx         58 %
+# navn navnsen      lars l?kke      venstre       xxx           xxxxx         58 %
 # navn navnsen      pia K           venstre       xxx           xxxxx         42 %
 # .....
 # .....
@@ -783,7 +782,7 @@ names(reg.data)
 reg.data <- data.pc
 reg.data <- filter(reg.data, party != "1")
 
-# Kør for enkelte partier, notér estimat
+# K?r for enkelte partier, not?r estimat
 # agree.three.mean, Signifikant for: a, b, k, (positiv alle)
 # agree.three.oth.mean, signifikant for o (negativ), 
 
@@ -858,7 +857,7 @@ rownames(resp.var) <- "Standard Deviation"
 #Explanation
 # http://www.altinget.dk/kandidater/ft15/information.aspx#.VmNPf7xlmRs
 
-#   Testens algoritme virker sådan, at der gives point på baggrund af forskellen mellem en kandidat
+#   Testens algoritme virker s?dan, at der gives point p? baggrund af forskellen mellem en kandidat
 >>>>>>> origin/master
 #   og en brugers besvarelse. Et ens svar giver 4 point (f.eks. helt enig og helt enig), et trin ved
 #   siden af giver 3 point (f.eks. helt uenig og delvist uenig). Man f?r 0 point for svar i hver sin
