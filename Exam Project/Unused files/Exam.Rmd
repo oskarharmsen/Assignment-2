@@ -6,13 +6,20 @@ date: "December 2015"
 output: html_document
 ---
 
+# To Do
+
+* Omvend 'ran.last.election'
+* Fjern Kristian Andersen
+* Scrape bedre baggrundsdata (fra DR, fx)
+
+
 ### Abstract
 The project is explorative (covers a lot)
 
 We show:
 
  * The Danish political spectrum does not perform according to typical Political Science theories, using dimensionality reduction
- * ... party prediction ...
+ * ... party prediction ... 
  * Present and use a new method for testing election outcome impact of VAAs on a candidate-specific level, and find an indication that VAAs do not significantly impact election outcomes. Previous literature has relied mostly on survey or focus group methods. Our analysis would greatly improve with access to population responses, which has unfortunately not been available.
 
 ### Introduction
@@ -24,12 +31,12 @@ We show:
 *Objective: provide an overview of the data*
 
 * Contents
-  + Danish parliamentary elections
+  + **Danish parliamentary elections**
     + Political system
     + Personlige stemmer, listestemmer, storkreds, lokalkredse
 
   + **What is the main data?**
-    + VAA responses to 15 questions
+    + VAA responses to 15 questions (true / stated preference)
       + Questions span a wide range of political subjects
       + Related to recent political events and discussions
     + Developed by DR, Altinget, ...
@@ -40,16 +47,17 @@ We show:
     + Ethical considerations
       + scraping data from online
       + politicians and publicity
-      
     
   
-  + **Visualizations**
+  + **Descriptive statistics**
     + Average party response, by question
       + Provides a good overview, but may have too much and too detailed information, when 
     
     + Average party distance from the centre of the scale
       + Can help provide an overview of what parties favor centrism
       + (to be done: add )
+    
+    + Variance in responses within parties
     
     + Issue: How do you visualize a dataset that has 15 dimensions?
 
@@ -78,15 +86,46 @@ We show:
     + Discussion: Is is is due to the questions being asked in the VAA?
   
   + Fitting the classical theories into the framework
-    + Results (PCA plot nummer to - fordelingspolitisk og )
+    + Results (PCA plot nummer to - fordelingspolitisk og værdipolitisk akse)
     + Discussion on correlation between different axes
 
 
 ### The political landscape: Predicting party affiliation 
+(hvor samlet partierne er)
+(asd)
+(asd)
+(asd)
 
 
 
 ### VAAs and Election outcomes: 
+
+*Objective: to provide a new test for VAA impact on election outcomes at a candidate level.*
+
+* Hypothesis:
+  + Having a distinct opinion will imply more personal votes 
+    + If voter preferences have a fair spread within the party affiliation boundaries, and voters are prone to vote for those candidates with whom they agree the most in the VAA, then candidates who have a larger range of responses 'to themselves', should obtain more personal votes.
+    + Assumptions: [...]
+    
+* Model
+  + Distinction: VAA definition of agreement.
+    + Literature critique of this.
+    + Relation to PCA.
+      + Difficulty of plotting.
+  + Relevant level of comparison
+    + Lokalkreds, storkreds [put in footnote, results when ]
+
+
+* Data
+  + Added demographic data, and
+  + VAA responses do not exist for all candidates. Any relation here?
+  
+* Results
+  +  
+  + Could have added,
+    + position on voting list
+    + elected, instead of personal votes
+
 
 
 #### Literature
